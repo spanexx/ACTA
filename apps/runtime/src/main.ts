@@ -7,6 +7,7 @@ import { createLogger } from '@acta/logging'
 async function bootstrap() {
   const cfg = loadConfig()
   const logger = createLogger('runtime', cfg.logLevel)
+
   const app = await NestFactory.create(AppModule)
   await app.listen(cfg.port)
   // Minimal ready log as per Phase-1 expectations
@@ -18,15 +19,17 @@ async function bootstrap() {
   // Graceful shutdown handling
   const signals = ['SIGINT', 'SIGTERM']
   signals.forEach(sig => {
-    process.on(sig, () => {
+    process.on(sig, async () => {
       logger.info(`Received ${sig}, shutting down gracefully`)
-      app.close().then(() => {
+
+      try {
+        await app.close()
         logger.info('Server closed')
         process.exit(0)
-      }).catch(err => {
+      } catch (err) {
         logger.error('Error during shutdown', err)
         process.exit(1)
-      })
+      }
     })
   })
 }

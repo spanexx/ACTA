@@ -1,0 +1,76 @@
+<section class="chat">
+    <div class="chat-messages">
+        <article *ngFor="let msg of chat.messages; trackBy: trackByMessageId" class="chat-message"
+            [class.chat-message--user]="msg.type === 'user'" [class.chat-message--acta]="msg.type === 'acta'"
+            [class.chat-message--system]="msg.type === 'system'">
+            <header class="chat-message__meta">
+                <span class="chat-message__author">{{ labelForType(msg.type) }}</span>
+                <span class="chat-message__time">{{ formatTime(msg.timestamp) }}</span>
+            </header>
+
+            <div class="chat-message__text">{{ msg.text }}</div>
+
+            <div class="chat-message__attachments" *ngIf="msg.attachments?.length">
+                <span *ngFor="let file of msg.attachments; trackBy: trackByAttachmentId" class="file-chip">
+                    {{ fileLabel(file) }}
+                </span>
+            </div>
+
+            <section *ngIf="msg.plan" class="plan-block">
+                <button type="button" class="plan-block__toggle" (click)="chat.togglePlan(msg.id)">
+                    <span class="plan-block__toggleTitle">Goal: {{ msg.plan.goal }}</span>
+                    <span class="plan-block__toggleHint">{{ msg.plan.collapsed ? 'expand' : 'collapse' }}</span>
+                </button>
+
+                <div *ngIf="!msg.plan.collapsed" class="plan-block__body">
+                    <ul class="plan-block__steps">
+                        <li *ngFor="let step of msg.plan.steps; trackBy: trackByPlanStepId" class="plan-step"
+                            [attr.data-status]="step.status">
+                            <span class="plan-step__icon">{{ planStepIcon(step.status) }}</span>
+                            <span class="plan-step__title">{{ step.title }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </article>
+
+    </div>
+
+    <form class="composer" (submit)="chat.onSubmit($event)">
+        <div class="composer__box">
+            <textarea name="draft" [(ngModel)]="chat.draft" class="composer__input" placeholder="Ask a follow up…"
+                (keydown)="chat.onDraftKeydown($event)"></textarea>
+
+            <div class="composer__actions">
+                <div class="composer__actionsLeft">
+                    <button type="button" class="icon-btn" (click)="fileInput.click()">
+                        Attach
+                    </button>
+                    <button type="button" class="icon-btn" disabled>Tools</button>
+                    <input #fileInput type="file" multiple class="composer__fileInput" (change)="chat.onFileInputChange($event)" />
+                </div>
+
+                <button type="submit" class="send-btn" [disabled]="!chat.canSend()" aria-label="Send">
+                    Send
+                </button>
+            </div>
+        </div>
+
+        <div class="composer__attachments" *ngIf="chat.pendingAttachments.length">
+            <div class="composer__attachmentsLabel">Attached:</div>
+            <div class="composer__chips">
+                <span *ngFor="let file of chat.pendingAttachments; trackBy: trackByAttachmentId"
+                    class="file-chip file-chip--removable">
+                    {{ fileLabel(file) }}
+                    <button type="button" class="file-chip__remove" (click)="chat.removePendingAttachment(file.id)"
+                        aria-label="Remove attachment">
+                        ✕
+                    </button>
+                </span>
+            </div>
+            <div class="composer__note">
+                Note: Files are not read until you allow permission.
+            </div>
+        </div>
+    </form>
+</section>

@@ -3,18 +3,11 @@
 
 import { ToolManifest, ToolResult, ToolContext, ActaTool } from '@acta/core'
 import { ToolValidator } from './validator'
-import { Logger, logAudit, AuditEvent } from '@acta/logging'
+import { Logger } from '@acta/logging'
+import { logExecutionAudit } from './registry/audit'
+import type { AgentStep, ExecutionContext } from './registry/types'
 
-export interface AgentStep {
-  id: string
-  tool: string
-  input: any
-}
-
-export interface ExecutionContext extends ToolContext {
-  stepId?: string
-  taskId?: string
-}
+export type { AgentStep, ExecutionContext } from './registry/types'
 
 export class ToolRegistry {
   private tools = new Map<string, ActaTool>()
@@ -85,7 +78,7 @@ export class ToolRegistry {
       const error = `Tool not found: ${step.tool}`
       this.logger.error(error, { stepId: step.id })
       
-      this.logExecutionAudit({
+      logExecutionAudit(this.logger, {
         toolId: step.tool,
         stepId: step.id,
         success: false,
@@ -110,7 +103,7 @@ export class ToolRegistry {
         duration: Date.now() - startTime
       })
 
-      this.logExecutionAudit({
+      logExecutionAudit(this.logger, {
         toolId: step.tool,
         stepId: step.id,
         success: result.success,
@@ -131,7 +124,7 @@ export class ToolRegistry {
         duration: Date.now() - startTime
       })
 
-      this.logExecutionAudit({
+      logExecutionAudit(this.logger, {
         toolId: step.tool,
         stepId: step.id,
         success: false,
@@ -145,38 +138,6 @@ export class ToolRegistry {
         error: errorMessage
       }
     }
-  }
-
-  private logExecutionAudit(event: {
-    toolId: string
-    stepId: string
-    success: boolean
-    artifacts?: string[]
-    output?: any
-    error?: string
-    duration: number
-    context: ExecutionContext
-  }): void {
-    const auditEvent: AuditEvent = {
-      type: 'tool_execution',
-      timestamp: Date.now(),
-      profileId: event.context.profileId,
-      tool: event.toolId,
-      decision: event.success ? 'allowed' : 'failed',
-      details: {
-        stepId: event.stepId,
-        taskId: event.context.taskId,
-        trustLevel: event.context.trustLevel,
-        workingDir: event.context.workingDir,
-        dryRun: event.context.dryRun,
-        duration: event.duration,
-        artifacts: event.artifacts,
-        hasOutput: event.output !== undefined,
-        error: event.error
-      }
-    }
-
-    logAudit(this.logger, auditEvent)
   }
 
   getToolCount(): number {

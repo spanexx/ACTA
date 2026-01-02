@@ -1,0 +1,116 @@
+<div class="permission-modal__overlay" *ngIf="permission.open && permission.request" (click)="permission.cancel()">
+    <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="permissionModalTitle"
+        (click)="$event.stopPropagation()">
+        <header class="permission-modal__header">
+            <div class="permission-modal__headerTitle" id="permissionModalTitle">
+                PERMISSION REQUEST
+            </div>
+            <button type="button" class="permission-modal__close" (click)="permission.cancel()"
+                [disabled]="permission.submitting" aria-label="Close">
+                ✕
+            </button>
+        </header>
+
+        <div class="permission-modal__body">
+            <div class="permission-modal__lead">
+                <div class="permission-modal__leadIcon">{{ permission.leadIcon(permission.request) }}</div>
+                <div class="permission-modal__leadText">Acta wants to execute a tool</div>
+            </div>
+
+            <div *ngIf="permission.request.cloud" class="permission-modal__cloud">
+                <div class="permission-modal__cloudTitle">Cloud model is selected</div>
+                <div class="permission-modal__cloudText">
+                    If you proceed, content may be sent to:
+                    <span class="mono">{{ permission.cloudLabel(permission.request) }}</span>
+                </div>
+            </div>
+
+            <div class="permission-modal__kv">
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">Tool</div>
+                    <div class="permission-modal__value mono">{{ permission.request.tool }}</div>
+                </div>
+
+                <div class="permission-modal__row" *ngIf="permission.request.scope">
+                    <div class="permission-modal__label">Scope</div>
+                    <div class="permission-modal__value mono">{{ permission.request.scope }}</div>
+                </div>
+
+                <div class="permission-modal__row" *ngIf="permission.request.input">
+                    <div class="permission-modal__label">Input</div>
+                    <div class="permission-modal__value mono">{{ permission.request.input }}</div>
+                </div>
+
+                <div class="permission-modal__row" *ngIf="permission.request.output">
+                    <div class="permission-modal__label">Output</div>
+                    <div class="permission-modal__value mono">{{ permission.request.output }}</div>
+                </div>
+
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">Reason</div>
+                    <div class="permission-modal__value">{{ permission.request.reason }}</div>
+                </div>
+
+                <div class="permission-modal__row" *ngIf="permission.request.risk || permission.request.risks?.length">
+                    <div class="permission-modal__label">Risk</div>
+                    <div class="permission-modal__value">{{ permission.riskLabel(permission.request) }}</div>
+                </div>
+
+                <div class="permission-modal__row" *ngIf="permission.request.trustLevel !== undefined">
+                    <div class="permission-modal__label">Trust mode</div>
+                    <div class="permission-modal__value">{{ permission.trustModeLabel(permission.request.trustLevel) }}</div>
+                </div>
+            </div>
+
+            <div class="permission-modal__sectionTitle">This action will:</div>
+            <ul class="permission-modal__bullets">
+                <li>{{ permission.primaryEffect(permission.request) }}</li>
+                <li>{{ permission.secondaryEffect(permission.request) }}</li>
+                <li>Show raw tool output in the Tool Output panel</li>
+            </ul>
+
+            <div class="permission-modal__sectionTitle">Decision (logged locally):</div>
+            <div class="permission-modal__choices">
+                <label class="permission-modal__choice">
+                    <input type="radio" name="permissionDecision" [(ngModel)]="permission.decision" value="allow_once" />
+                    <span>Allow once</span>
+                </label>
+                <label class="permission-modal__choice">
+                    <input type="radio" name="permissionDecision" [(ngModel)]="permission.decision"
+                        value="allow_always" />
+                    <span>
+                        Always allow
+                        <ng-container *ngIf="permission.folderScope(permission.request) as folder">
+                            for this folder: <span class="mono">{{ folder }}</span>
+                        </ng-container>
+                    </span>
+                </label>
+                <label class="permission-modal__choice">
+                    <input type="radio" name="permissionDecision" [(ngModel)]="permission.decision" value="deny" />
+                    <span>Deny</span>
+                </label>
+            </div>
+
+            <label class="permission-modal__remember" *ngIf="permission.request.rememberDecision">
+                <input type="checkbox" name="permissionRemember" [(ngModel)]="permission.remember" />
+                <span>Remember for this folder</span>
+            </label>
+        </div>
+
+        <footer class="permission-modal__footer">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary"
+                (click)="permission.submit('deny')" [disabled]="permission.submitting">
+                Deny
+            </button>
+            <div class="permission-modal__footerSpacer"></div>
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary"
+                (click)="permission.submit('allow_once')" [disabled]="permission.submitting">
+                Allow once
+            </button>
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary"
+                (click)="permission.submit('allow_always')" [disabled]="permission.submitting">
+                Always allow
+            </button>
+        </footer>
+    </section>
+</div>

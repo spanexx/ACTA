@@ -1,0 +1,103 @@
+<aside class="tool-panel" aria-label="Tool Outputs">
+    <header class="tool-panel__header">
+        <div class="tool-panel__title">
+            <span>Tool Outputs</span>
+            <span class="tool-panel__count">{{ toolOutputs.toolOutputs.length }}</span>
+        </div>
+
+        <div class="tool-panel__controls">
+            <select class="tool-panel__select" [(ngModel)]="toolOutputs.toolFilter" name="toolFilter"
+                aria-label="Filter tool outputs">
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="errors">Errors</option>
+            </select>
+
+            <input class="tool-panel__search" type="text" [(ngModel)]="toolOutputs.toolSearch" name="toolSearch"
+                placeholder="Search tool or path…" />
+        </div>
+
+        <div class="tool-panel__actions">
+            <button type="button" class="tool-panel__action" (click)="toolOutputs.clearCompleted()">
+                Clear completed
+            </button>
+            <button type="button" class="tool-panel__action" (click)="toolOutputs.exportAll()">
+                Export…
+            </button>
+        </div>
+    </header>
+
+    <div class="tool-panel__list" *ngIf="toolOutputs.getVisible() as outputs">
+        <div *ngIf="outputs.length === 0" class="tool-panel__empty">
+            No tool executions yet
+        </div>
+
+        <article *ngFor="let out of outputs; trackBy: trackByToolOutputId" class="tool-card"
+            [attr.data-status]="out.status">
+            <header class="tool-card__header">
+                <div class="tool-card__status">
+                    <span class="tool-card__statusIcon">{{ toolOutputs.statusIcon(out.status) }}</span>
+                    <span class="tool-card__statusText">{{ toolOutputs.statusLabel(out.status) }}</span>
+                </div>
+                <span class="tool-card__time">{{ formatTime(out.timestamp) }}</span>
+            </header>
+
+            <div class="tool-card__row">
+                <span class="tool-card__label">Tool</span>
+                <span class="tool-card__value mono">{{ out.tool }}</span>
+            </div>
+
+            <div class="tool-card__row" *ngIf="out.scope">
+                <span class="tool-card__label">Scope</span>
+                <span class="tool-card__value mono">{{ out.scope }}</span>
+            </div>
+
+            <div class="tool-card__row" *ngIf="out.input">
+                <span class="tool-card__label">Input</span>
+                <span class="tool-card__value mono">{{ out.input }}</span>
+            </div>
+
+            <div class="tool-card__row" *ngIf="out.reason">
+                <span class="tool-card__label">Reason</span>
+                <span class="tool-card__value">{{ out.reason }}</span>
+            </div>
+
+            <div class="tool-card__preview" *ngIf="out.preview">
+                {{ out.preview }}
+            </div>
+
+            <div class="tool-card__error" *ngIf="out.error">
+                Error: {{ out.error }}
+            </div>
+
+            <div class="tool-card__progress" *ngIf="out.status === 'running' && out.progress !== undefined">
+                <div class="tool-card__progressBar">
+                    <div class="tool-card__progressFill" [style.width.%]="out.progress"></div>
+                </div>
+                <div class="tool-card__progressText">{{ out.progress }}%</div>
+            </div>
+
+            <div class="tool-card__artifacts" *ngIf="out.artifacts?.length">
+                <div class="tool-card__artifactsLabel">Artifacts</div>
+                <div class="tool-card__artifact" *ngFor="let a of out.artifacts; trackBy: trackByArtifactPath">
+                    <span class="mono">{{ a.path }}</span>
+                    <button type="button" class="tool-card__link" (click)="toolOutputs.copyToClipboard(a.path)">
+                        Copy path
+                    </button>
+                </div>
+            </div>
+
+            <div class="tool-card__links">
+                <button type="button" class="tool-card__link" (click)="toolOutputs.toggleRaw(out.id)">
+                    {{ out.expanded ? 'Hide raw output' : 'View raw output' }}
+                </button>
+                <button type="button" class="tool-card__link" (click)="toolOutputs.copyJson(out.raw)">
+                    Copy JSON
+                </button>
+            </div>
+
+            <pre class="tool-card__raw" *ngIf="out.expanded">{{ toolOutputs.formatJson(out.raw) }}</pre>
+        </article>
+    </div>
+</aside>

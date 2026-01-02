@@ -4,8 +4,8 @@ export const AGENT_VERSION = "0.1.0"
 import type { MemoryStore } from '@acta/memory'
 import type { LLMRouter, LLMRequest, LLMResponse } from '@acta/llm'
 import type { AgentPlan, AgentStep, ToolResult } from '@acta/ipc'
-import type { ToolRegistry } from '@acta/tools'
-import type { TrustProfile, PermissionRequest, PermissionDecision } from '@acta/trust'
+import type { LegacyToolRegistry } from '@acta/tools'
+import type { TrustProfile, PermissionRequest, PermissionDecisionType } from '@acta/trust'
 import type { Logger } from '@acta/logging'
 import { canExecute } from '@acta/trust'
 
@@ -224,6 +224,8 @@ export interface ExecutionOrchestratorOptions {
   logger: Logger
   /** Callback to emit IPC events. */
   emitEvent?: (type: string, payload: any) => void
+  /** Callback to wait for UI permission response when required. */
+  waitForPermission?: (request: PermissionRequest) => Promise<PermissionDecisionType>
 }
 
 /**
@@ -231,20 +233,20 @@ export interface ExecutionOrchestratorOptions {
  * Phase-1: stubbed permission response handling (always allow if not denied).
  */
 export class ExecutionOrchestrator {
-  private tools: ToolRegistry
   private profile: TrustProfile
   private logger: Logger
   private emitEvent?: (type: string, payload: any) => void
+  private waitForPermission?: (request: PermissionRequest) => Promise<PermissionDecisionType>
 
   constructor(
-    tools: ToolRegistry,
+    private tools: LegacyToolRegistry,
     profile: TrustProfile,
     options: ExecutionOrchestratorOptions,
   ) {
-    this.tools = tools
     this.profile = profile
     this.logger = options.logger
     this.emitEvent = options.emitEvent
+    this.waitForPermission = options.waitForPermission
   }
 
   /**
@@ -252,7 +254,7 @@ export class ExecutionOrchestrator {
    * Emits task.plan, task.step (start/completed/error), and task.result.
    */
   async execute(plan: AgentPlan): Promise<{ success: boolean; results: ToolResult[] }> {
-    this.emit('task.plan', { goal: plan.goal, stepCount: plan.steps.length })
+    this.emit('task.plan', plan)
 
     const results: ToolResult[] = []
 
@@ -260,11 +262,22 @@ export class ExecutionOrchestrator {
       this.emit('task.step', {
         stepId: step.id,
         tool: step.tool,
+        intent: step.intent,
+        input: step.input,
         status: 'start',
       })
 
       try {
-        const decision = await this.checkPermission(step)
+        const permissionRequest = this.buildPermissionRequest(step)
+        let decision = await canExecute(permissionRequest, this.profile, this.logger)
+
+        if (decision.decision === 'ask' && this.waitForPermission) {
+          this.emit('permission.request', permissionRequest)
+          decision = {
+            ...decision,
+            decision: await this.waitForPermission(permissionRequest),
+          }
+        }
 
         if (decision.decision === 'deny') {
           const errorResult: ToolResult = {
@@ -276,6 +289,8 @@ export class ExecutionOrchestrator {
           this.emit('task.step', {
             stepId: step.id,
             tool: step.tool,
+            intent: step.intent,
+            input: step.input,
             status: 'error',
             error: errorResult.error,
           })
@@ -295,6 +310,8 @@ export class ExecutionOrchestrator {
           this.emit('task.step', {
             stepId: step.id,
             tool: step.tool,
+            intent: step.intent,
+            input: step.input,
             status: 'error',
             error: errorResult.error,
           })
@@ -314,9 +331,12 @@ export class ExecutionOrchestrator {
         this.emit('task.step', {
           stepId: step.id,
           tool: step.tool,
+          intent: step.intent,
+          input: step.input,
           status: result.success ? 'completed' : 'error',
           output: result.output,
           error: result.error,
+          artifacts: result.artifacts,
         })
       } catch (err) {
         const errorResult: ToolResult = {
@@ -328,6 +348,8 @@ export class ExecutionOrchestrator {
         this.emit('task.step', {
           stepId: step.id,
           tool: step.tool,
+          intent: step.intent,
+          input: step.input,
           status: 'error',
           error: errorResult.error,
         })
@@ -345,20 +367,18 @@ export class ExecutionOrchestrator {
     return { success, results }
   }
 
-  private async checkPermission(step: AgentStep): Promise<PermissionDecision> {
-    const request: PermissionRequest = {
+  private buildPermissionRequest(step: AgentStep): PermissionRequest {
+    return {
       id: `perm-${step.id}`,
       tool: step.tool,
       action: step.intent,
       reason: `Execute step '${step.id}'`,
       scope: step.tool,
-      risk: 'low', // Phase-1: assume low risk for demo
+      risk: step.requiresPermission ? 'medium' : 'low',
       reversible: true,
       timestamp: Date.now(),
       profileId: this.profile.profileId,
     }
-
-    return canExecute(request, this.profile, this.logger)
   }
 
   private emit(type: string, payload: any): void {

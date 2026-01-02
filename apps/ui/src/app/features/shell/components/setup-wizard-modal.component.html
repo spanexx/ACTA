@@ -1,0 +1,104 @@
+<div class="permission-modal__overlay" *ngIf="setup.open" (click)="setup.closeWizard()">
+    <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="setupWizardTitle" (click)="$event.stopPropagation()">
+        <header class="permission-modal__header">
+            <div class="permission-modal__headerTitle" id="setupWizardTitle">FIRST-RUN SETUP</div>
+            <button type="button" class="permission-modal__close" (click)="setup.closeWizard()" [disabled]="setup.busy" aria-label="Close">
+                ✕
+            </button>
+        </header>
+
+        <div class="permission-modal__body">
+            <div class="permission-modal__lead">
+                <div class="permission-modal__leadIcon">🧭</div>
+                <div class="permission-modal__leadText">
+                    Configure profile <span class="mono">{{ profiles.profileId }}</span>
+                </div>
+            </div>
+
+            <div class="permission-modal__sectionTitle">Model provider</div>
+            <div class="permission-modal__kv">
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">Provider</div>
+                    <div class="permission-modal__value">
+                        <select class="topbar__select" name="setupProvider" [(ngModel)]="setup.config.modelProvider" [disabled]="setup.busy">
+                            <option value="ollama">Ollama (local)</option>
+                            <option value="lmstudio">LM Studio (local)</option>
+                            <option value="openai">OpenAI (cloud)</option>
+                            <option value="anthropic">Anthropic (cloud)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <ng-container *ngIf="setup.config.modelProvider === 'ollama'">
+                <div class="permission-modal__sectionTitle">Ollama endpoint</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">URL</div>
+                        <div class="permission-modal__value">
+                            <input class="tool-panel__search" type="text" name="setupEndpoint" [(ngModel)]="setup.config.endpoint" [disabled]="setup.busy"
+                                placeholder="http://localhost:11434" />
+                        </div>
+                    </div>
+                </div>
+                <div class="permission-modal__value">
+                    <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="setup.testOllamaEndpoint()"
+                        [disabled]="setup.busy || !(setup.config.endpoint ?? '').trim()">
+                        Test endpoint
+                    </button>
+                    <span class="topbar__meta" *ngIf="setup.testStatus">{{ setup.testStatus }}</span>
+                </div>
+
+                <div class="permission-modal__sectionTitle">Model</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">Name</div>
+                        <div class="permission-modal__value">
+                            <select class="topbar__select" name="setupModel" [(ngModel)]="setup.config.model" [disabled]="setup.busy">
+                                <option *ngFor="let m of setup.ollamaModels; trackBy: trackByString" [value]="m">
+                                    {{ m }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+
+            <ng-container *ngIf="setup.config.modelProvider === 'openai' || setup.config.modelProvider === 'anthropic'">
+                <div class="permission-modal__sectionTitle">Cloud warning</div>
+                <label class="permission-modal__remember">
+                    <input type="checkbox" name="cloudWarnBeforeSending" [(ngModel)]="setup.config.cloudWarnBeforeSending" [disabled]="setup.busy" />
+                    <span>Warn before sending content to cloud provider</span>
+                </label>
+            </ng-container>
+
+            <div class="permission-modal__sectionTitle">Default trust level</div>
+            <div class="permission-modal__kv">
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">Trust</div>
+                    <div class="permission-modal__value">
+                        <select class="topbar__select" name="setupTrust" [(ngModel)]="setup.config.trustLevel" [disabled]="setup.busy">
+                            <option [ngValue]="0">Deny (0)</option>
+                            <option [ngValue]="1">Ask every time (1)</option>
+                            <option [ngValue]="2">Ask once (2)</option>
+                            <option [ngValue]="3">Allow (logged) (3)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="permission-modal__sectionTitle">Summary</div>
+            <div class="permission-modal__value">{{ setupSummary() }}</div>
+        </div>
+
+        <footer class="permission-modal__footer">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="setup.closeWizard()" [disabled]="setup.busy">
+                Later
+            </button>
+            <div class="permission-modal__footerSpacer"></div>
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="setup.complete()" [disabled]="setup.busy || !setup.canComplete()">
+                Save
+            </button>
+        </footer>
+    </section>
+</div>

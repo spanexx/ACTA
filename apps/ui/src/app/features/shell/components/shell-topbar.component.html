@@ -1,0 +1,58 @@
+<header class="topbar">
+    <div class="topbar__left">
+        <span class="topbar__section">Chat</span>
+        <span class="topbar__divider"></span>
+        <span class="topbar__title">Quarterly Report Analysis</span>
+        <span class="badge">Local</span>
+        <span class="badge" [class.badge--warn]="runtime.runtimeConn.status !== 'connected'" [title]="runtime.runtimeConn.error ?? ''">
+            Runtime: {{ runtime.runtimeConn.status === 'connected' ? 'Connected' : 'Disconnected' }}
+        </span>
+    </div>
+    <div class="topbar__right">
+        <div class="topbar__trust">
+            <span class="topbar__meta">Profile:</span>
+            <select class="topbar__select" name="profile" [(ngModel)]="profiles.selection" (ngModelChange)="profiles.onSelectionChange($event)"
+                [disabled]="profiles.busy || setup.busy || trust.confirmOpen || trust.busy || setup.open || profiles.switchConfirmOpen"
+                aria-label="Profile">
+                <option *ngFor="let p of profiles.profiles; trackBy: profiles.trackByProfileId" [ngValue]="p.id">
+                    {{ p.name }}
+                </option>
+            </select>
+            <button type="button" class="icon-btn" (click)="profiles.openManage()" [disabled]="profiles.busy || setup.open || trust.confirmOpen">
+                Manage
+            </button>
+        </div>
+
+        <div class="topbar__trust">
+            <span class="topbar__meta">Trust:</span>
+            <select class="topbar__select" name="trustLevel" [(ngModel)]="trust.selection" (ngModelChange)="trust.onSelectionChange($event)"
+                [disabled]="trust.busy || trust.confirmOpen" aria-label="Trust level">
+                <option [ngValue]="0">Deny (0)</option>
+                <option [ngValue]="1">Ask every time (1)</option>
+                <option [ngValue]="2">Ask once (2)</option>
+                <option [ngValue]="3">Allow (logged) (3)</option>
+            </select>
+        </div>
+
+        <ng-container *ngIf="demo.enabled">
+            <button type="button" class="icon-btn" (click)="demo.demoPermission()" [disabled]="demo.permissionBusy">
+                Demo permission
+            </button>
+            <button type="button" class="icon-btn" (click)="demo.runScenario()" [disabled]="demo.scenarioBusy || demo.permissionBusy">
+                Demo scenario
+            </button>
+        </ng-container>
+
+        <button type="button" class="icon-btn" (click)="logs.openLogsFolder()" [disabled]="logs.busy">
+            Logs
+        </button>
+        <button type="button" class="icon-btn" (click)="setup.openWizard()" [disabled]="setup.busy">
+            Setup
+        </button>
+
+        <span class="topbar__meta" *ngIf="demo.enabled && demo.permissionStatus">{{ demo.permissionStatus }}</span>
+        <span class="topbar__meta" *ngIf="demo.enabled && demo.scenarioStatus">{{ demo.scenarioStatus }}</span>
+        <span class="topbar__meta" *ngIf="logs.status">{{ logs.status }}</span>
+        <span class="topbar__meta">IPC: {{ runtime.pingStatus }}</span>
+    </div>
+</header>

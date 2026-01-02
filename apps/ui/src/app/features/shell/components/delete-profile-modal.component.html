@@ -1,0 +1,38 @@
+<div class="permission-modal__overlay" *ngIf="profiles.deleteOpen && profiles.deleteProfileId" (click)="profiles.cancelDelete()">
+    <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="deleteProfileTitle" (click)="$event.stopPropagation()">
+        <header class="permission-modal__header">
+            <div class="permission-modal__headerTitle" id="deleteProfileTitle">DELETE PROFILE</div>
+            <button type="button" class="permission-modal__close" (click)="profiles.cancelDelete()" [disabled]="profiles.busy" aria-label="Close">
+                ✕
+            </button>
+        </header>
+
+        <div class="permission-modal__body">
+            <div class="permission-modal__lead">
+                <div class="permission-modal__leadIcon">👤</div>
+                <div class="permission-modal__leadText">
+                    Delete profile <span class="mono">{{ profiles.deleteProfileId }}</span>?
+                </div>
+            </div>
+            <div class="permission-modal__sectionTitle">What happens</div>
+            <ul class="permission-modal__bullets">
+                <li>Profile is removed from the list</li>
+                <li>By default, files are archived (not permanently deleted)</li>
+            </ul>
+            <label class="permission-modal__remember">
+                <input type="checkbox" name="deleteProfileFiles" [(ngModel)]="profiles.deleteProfileFiles" />
+                <span>Permanently delete profile files</span>
+            </label>
+        </div>
+
+        <footer class="permission-modal__footer">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.cancelDelete()" [disabled]="profiles.busy">
+                Cancel
+            </button>
+            <div class="permission-modal__footerSpacer"></div>
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profiles.confirmDelete()" [disabled]="profiles.busy">
+                Delete
+            </button>
+        </footer>
+    </section>
+</div>

@@ -1,0 +1,61 @@
+<div class="permission-modal__overlay" *ngIf="profiles.manageOpen" (click)="profiles.closeManage()">
+    <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="manageProfilesTitle" (click)="$event.stopPropagation()">
+        <header class="permission-modal__header">
+            <div class="permission-modal__headerTitle" id="manageProfilesTitle">PROFILES</div>
+            <button type="button" class="permission-modal__close" (click)="profiles.closeManage()" [disabled]="profiles.busy" aria-label="Close">
+                ✕
+            </button>
+        </header>
+
+        <div class="permission-modal__body">
+            <div class="permission-modal__sectionTitle">Active profile</div>
+            <div class="permission-modal__value">
+                <span class="mono">{{ profiles.profileId }}</span>
+            </div>
+
+            <div class="permission-modal__sectionTitle">Profiles</div>
+            <div class="permission-modal__kv">
+                <div class="permission-modal__row" *ngFor="let p of profiles.profiles; trackBy: profiles.trackByProfileId">
+                    <div class="permission-modal__label">{{ p.name }}</div>
+                    <div class="permission-modal__value">
+                        <span class="mono">{{ p.id }}</span>
+                        <ng-container *ngIf="p.id === profiles.profileId"> (active)</ng-container>
+                    </div>
+                    <div class="permission-modal__value">
+                        <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.requestDelete(p.id)"
+                            [disabled]="profiles.busy || p.id === 'default' || p.id === profiles.profileId">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="permission-modal__sectionTitle">Create</div>
+            <div class="permission-modal__kv">
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">Name</div>
+                    <div class="permission-modal__value">
+                        <input class="tool-panel__search" type="text" [(ngModel)]="profiles.newProfileName" name="newProfileName"
+                            placeholder="New profile name" />
+                    </div>
+                </div>
+            </div>
+            <div class="permission-modal__value">
+                <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profiles.create()"
+                    [disabled]="profiles.busy || !profiles.newProfileName.trim()">
+                    Create profile
+                </button>
+            </div>
+        </div>
+
+        <footer class="permission-modal__footer">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.closeManage()" [disabled]="profiles.busy">
+                Close
+            </button>
+            <div class="permission-modal__footerSpacer"></div>
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.refresh()" [disabled]="profiles.busy">
+                Refresh
+            </button>
+        </footer>
+    </section>
+</div>

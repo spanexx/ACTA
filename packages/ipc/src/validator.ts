@@ -21,6 +21,8 @@ function isValidMessageType(type: unknown): type is ActaMessageType {
     'task.plan',
     'task.step',
     'task.permission',
+    'permission.request',
+    'permission.response',
     'task.result',
     'task.error',
     'memory.read',

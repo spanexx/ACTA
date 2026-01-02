@@ -32,11 +32,18 @@ export interface ToolInput {
 
 export interface ToolContext {
   profileId: string
-  trustLevel: 'low' | 'medium' | 'high'
-  workingDir: string
-  dryRun: boolean
+  // Phase-1 runtime/tool execution context.
+  // NOTE: This contract must stay aligned with `@acta/tools`.
+  cwd: string
+  tempDir: string
+  permissions: Array<'read_files' | 'write_files' | 'read_clipboard' | 'write_clipboard' | 'screen_capture' | 'network_access' | 'shell_execute'>
+  logger?: (msg: string, meta?: any) => void
+
+  // Legacy fields from early scaffolding (kept optional to avoid breaking older code paths)
+  trustLevel?: 'low' | 'medium' | 'high'
+  workingDir?: string
+  dryRun?: boolean
   llm?: any
-  logger?: (msg: string) => void
 }
 
 export interface ToolResult {

@@ -1,0 +1,29 @@
+<div class="layout">
+    <aside class="sidebar" aria-label="Sidebar">
+        <div class="sidebar__top">
+            <div class="sidebar__logo" aria-label="Acta">A</div>
+        </div>
+        <div class="sidebar__bottom">
+            <button type="button" class="icon-btn" title="Settings" disabled>
+                Settings
+            </button>
+        </div>
+    </aside>
+
+    <main class="main">
+        <acta-shell-topbar></acta-shell-topbar>
+
+        <div class="split">
+            <acta-chat-panel></acta-chat-panel>
+            <acta-tool-panel></acta-tool-panel>
+        </div>
+    </main>
+
+    <acta-permission-modal></acta-permission-modal>
+
+    <acta-trust-confirm-modal></acta-trust-confirm-modal>
+    <acta-manage-profiles-modal></acta-manage-profiles-modal>
+    <acta-delete-profile-modal></acta-delete-profile-modal>
+    <acta-profile-switch-confirm-modal></acta-profile-switch-confirm-modal>
+    <acta-setup-wizard-modal></acta-setup-wizard-modal>
+</div>

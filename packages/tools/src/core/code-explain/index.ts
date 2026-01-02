@@ -98,13 +98,13 @@ export const code_explain: ActaTool = {
         }
       }
 
-      const filePath = path.resolve(context.workingDir, input.path)
+      const filePath = path.resolve(context.cwd, input.path)
       const ext = path.extname(filePath).slice(1).toLowerCase()
 
-      if (!filePath.startsWith(context.workingDir)) {
+      if (!filePath.startsWith(context.cwd)) {
         return {
           success: false,
-          error: 'Path traversal detected: file path must be within working directory'
+          error: 'Path traversal detected: file path must be within cwd'
         }
       }
 

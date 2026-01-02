@@ -10,6 +10,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@acta/core": "0.1.0",
     "@acta/logging": "0.1.0",
     "@acta/memory": "0.1.0",
     "@acta/tools": "0.1.0",

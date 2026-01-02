@@ -1,0 +1,6 @@
+export * from './delete-profile-modal.component'
+export * from './manage-profiles-modal.component'
+export * from './profile-switch-confirm-modal.component'
+export * from './setup-wizard-modal.component'
+export * from './shell-topbar.component'
+export * from './trust-confirm-modal.component'

@@ -14,6 +14,15 @@ app-root {
   display: block;
 }
 
+acta-app-shell {
+  height: 100%;
+  display: block;
+}
+
+acta-permission-modal {
+  display: contents;
+}
+
 .layout {
   height: 100%;
   display: flex;
@@ -443,6 +452,20 @@ app-root {
   flex: 1;
   display: flex;
   min-height: 0;
+}
+
+.split > acta-chat-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.split > acta-tool-panel {
+  flex: 0 0 clamp(320px, 35vw, 540px);
+  width: clamp(320px, 35vw, 540px);
+  min-height: 0;
+  display: flex;
 }
 
 .tool-panel {

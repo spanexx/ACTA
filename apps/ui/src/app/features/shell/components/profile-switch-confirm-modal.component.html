@@ -1,0 +1,44 @@
+<div class="permission-modal__overlay" *ngIf="profiles.switchConfirmOpen && profiles.pendingProfileId" (click)="profiles.cancelSwitch()">
+    <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="profileSwitchConfirmTitle" (click)="$event.stopPropagation()">
+        <header class="permission-modal__header">
+            <div class="permission-modal__headerTitle" id="profileSwitchConfirmTitle">
+                SWITCH PROFILE
+            </div>
+            <button type="button" class="permission-modal__close" (click)="profiles.cancelSwitch()" [disabled]="profiles.busy" aria-label="Close">
+                ✕
+            </button>
+        </header>
+
+        <div class="permission-modal__body">
+            <div class="permission-modal__lead">
+                <div class="permission-modal__leadIcon">⚠️</div>
+                <div class="permission-modal__leadText">A tool run is active</div>
+            </div>
+            <div class="permission-modal__sectionTitle">Why this matters</div>
+            <ul class="permission-modal__bullets">
+                <li>Switching profiles changes trust defaults and model selection</li>
+                <li>It also changes logs and memory scope for the UI</li>
+            </ul>
+            <div class="permission-modal__kv">
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">From</div>
+                    <div class="permission-modal__value mono">{{ profiles.profileId }}</div>
+                </div>
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">To</div>
+                    <div class="permission-modal__value mono">{{ profiles.pendingProfileId }}</div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="permission-modal__footer">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.cancelSwitch()" [disabled]="profiles.busy">
+                Cancel
+            </button>
+            <div class="permission-modal__footerSpacer"></div>
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profiles.confirmSwitch()" [disabled]="profiles.busy">
+                Switch anyway
+            </button>
+        </footer>
+    </section>
+</div>

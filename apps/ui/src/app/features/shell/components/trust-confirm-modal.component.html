@@ -1,0 +1,48 @@
+<div class="permission-modal__overlay" *ngIf="trust.confirmOpen" (click)="trust.cancelChange()">
+    <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="trustConfirmTitle" (click)="$event.stopPropagation()">
+        <header class="permission-modal__header">
+            <div class="permission-modal__headerTitle" id="trustConfirmTitle">
+                CHANGE TRUST LEVEL
+            </div>
+            <button type="button" class="permission-modal__close" (click)="trust.cancelChange()" [disabled]="trust.busy" aria-label="Close">
+                ✕
+            </button>
+        </header>
+
+        <div class="permission-modal__body">
+            <div class="permission-modal__lead">
+                <div class="permission-modal__leadIcon">🛡️</div>
+                <div class="permission-modal__leadText">
+                    Change trust level for profile "{{ profiles.profileId }}"?
+                </div>
+            </div>
+
+            <div class="permission-modal__kv">
+                <div class="permission-modal__row">
+                    <div class="permission-modal__label">From</div>
+                    <div class="permission-modal__value">{{ trust.trustModeLabel(trust.level) }}</div>
+                </div>
+                <div class="permission-modal__row" *ngIf="trust.pending !== null">
+                    <div class="permission-modal__label">To</div>
+                    <div class="permission-modal__value">{{ trust.trustModeLabel(trust.pending) }}</div>
+                </div>
+            </div>
+
+            <div class="permission-modal__sectionTitle">Note</div>
+            <div class="permission-modal__value">
+                This may allow tools to run without prompts.
+            </div>
+        </div>
+
+        <footer class="permission-modal__footer">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="trust.cancelChange()" [disabled]="trust.busy">
+                Cancel
+            </button>
+            <div class="permission-modal__footerSpacer"></div>
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="trust.confirmChange()"
+                [disabled]="trust.busy || trust.pending === null">
+                Confirm
+            </button>
+        </footer>
+    </section>
+</div>

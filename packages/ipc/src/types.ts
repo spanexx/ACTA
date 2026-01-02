@@ -7,6 +7,9 @@ export interface ActaMessage<T = any> {
   source: 'ui' | 'agent' | 'tool' | 'system'
   timestamp: number
   payload: T
+  profileId?: string
+  correlationId?: string
+  replyTo?: string
 }
 
 export type ActaMessageType =
@@ -14,6 +17,8 @@ export type ActaMessageType =
   | 'task.plan'
   | 'task.step'
   | 'task.permission'
+  | 'permission.request'
+  | 'permission.response'
   | 'task.result'
   | 'task.error'
   | 'memory.read'
