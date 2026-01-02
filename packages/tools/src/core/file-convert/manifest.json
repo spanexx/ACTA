@@ -1,0 +1,18 @@
+{
+  "id": "file.convert",
+  "name": "File Convert",
+  "version": "1.0.0",
+  "author": "Acta Core",
+  "description": "Converts files between supported formats (PDF→TXT, CSV→JSON)",
+  "domain": "filesystem",
+  "permissions": {
+    "read": true,
+    "write": true,
+    "execute": false
+  },
+  "riskLevel": "medium",
+  "reversible": false,
+  "sandbox": true,
+  "entry": "index.ts",
+  "supportedFormats": ["pdf", "txt", "csv", "json"]
+}

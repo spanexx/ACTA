@@ -1,0 +1,48 @@
+{
+  "name": "acta",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=@acta/runtime\"",
+    "dev:ui": "npm run dev --workspace=@acta/ui",
+    "dev:all": "concurrently \"npm run dev --workspace=@acta/runtime\" \"npm run dev --workspace=@acta/ui\"",
+    "build": "npm run build --workspaces --if-present",
+    "build:runtime": "npm run build --workspace=@acta/runtime",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write .",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf packages/*/dist apps/*/dist",
+    "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules",
+    "start": "npm run start --workspace=@acta/runtime",
+    "start:prod": "NODE_ENV=production npm run start --workspace=@acta/runtime"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "concurrently": "^8.0.0",
+    "eslint": "^8.40.0",
+    "jest": "^29.5.0",
+    "nodemon": "^3.0.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^5.0.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@nestjs/platform-express": "^11.1.11"
+  }
+}

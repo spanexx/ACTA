@@ -1,0 +1,18 @@
+{
+  "id": "code.explain",
+  "name": "Code Explain",
+  "version": "1.0.0",
+  "author": "Acta Core",
+  "description": "Reads a code file and produces a detailed explanation",
+  "domain": "analysis",
+  "permissions": {
+    "read": true,
+    "write": false,
+    "execute": false
+  },
+  "riskLevel": "low",
+  "reversible": true,
+  "sandbox": true,
+  "entry": "index.ts",
+  "supportedFormats": ["ts", "js", "py", "java", "html", "css", "json", "md"]
+}

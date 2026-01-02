@@ -1,0 +1,12 @@
+{
+  // Root Prettier config for ACTA monorepo (Phase-1 baseline)
+  // Ensures consistent formatting across all workspaces.
+  "semi": false,
+  "trailingComma": "es5",
+  "singleQuote": false,
+  "printWidth": 88,
+  "tabWidth": 2,
+  "useTabs": false,
+  "bracketSpacing": true,
+  "arrowParens": "avoid"
+}

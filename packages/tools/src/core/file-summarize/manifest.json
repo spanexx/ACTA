@@ -1,0 +1,18 @@
+{
+  "id": "file.summarize",
+  "name": "File Summarize",
+  "version": "1.0.0",
+  "author": "Acta Core",
+  "description": "Summarizes file content using LLM (supports TXT, CSV, and PDF)",
+  "domain": "analysis",
+  "permissions": {
+    "read": true,
+    "write": false,
+    "execute": false
+  },
+  "riskLevel": "medium",
+  "reversible": true,
+  "sandbox": true,
+  "entry": "index.ts",
+  "supportedFormats": ["txt", "csv", "json", "md"]
+}

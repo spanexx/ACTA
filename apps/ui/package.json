@@ -1,0 +1,36 @@
+{
+  "name": "@acta/ui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron/dist/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:angular\" \"npm run dev:electron\"",
+    "dev:angular": "ng serve acta-ui --port 4200",
+    "dev:electron": "concurrently \"npm run watch:electron\" \"wait-on http://localhost:4200 && ELECTRON_DISABLE_SECURITY_WARNINGS=true electron electron/dist/main.js\"",
+    "watch:electron": "tsc -p electron/tsconfig.json --watch",
+    "build": "npm run build:electron && npm run build:angular",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:angular": "ng build acta-ui"
+  },
+  "dependencies": {
+    "@angular/common": "^17.3.0",
+    "@angular/compiler": "^17.3.0",
+    "@angular/core": "^17.3.0",
+    "@angular/forms": "^17.3.0",
+    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser-dynamic": "^17.3.0",
+    "@acta/ipc": "0.1.0",
+    "electron": "^29.0.0",
+    "rxjs": "^7.8.0",
+    "tslib": "^2.6.0",
+    "zone.js": "^0.14.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^17.3.0",
+    "@angular/cli": "^17.3.0",
+    "@types/node": "^20.0.0",
+    "concurrently": "^8.0.0",
+    "typescript": "^5.0.0",
+    "wait-on": "^7.2.0"
+  }
+}

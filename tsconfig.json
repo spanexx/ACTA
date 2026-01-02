@@ -1,0 +1,35 @@
+{
+  // Root TypeScript config for ACTA monorepo (solution-style, Phase-1 baseline)
+  // Acts as a coordinator for project references; does not include source files itself.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
+  },
+  // Avoid pulling any files from the root; referenced projects define their own includes.
+  "files": [],
+  "include": [],
+  // Project references: these paths are now scaffolded in M1-S5.
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/llm" },
+    { "path": "./packages/agent" },
+    { "path": "./packages/tools" },
+    { "path": "./packages/trust" },
+    { "path": "./packages/memory" },
+    { "path": "./packages/ipc" },
+    { "path": "./packages/profiles" },
+    { "path": "./packages/logging" },
+    { "path": "./apps/runtime" }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "demo.tool",
+  "name": "Demo Tool",
+  "version": "1.0.0",
+  "author": "Acta Core",
+  "description": "A demo tool for testing the tool loader",
+  "domain": "demo",
+  "permissions": {
+    "read": true,
+    "write": false,
+    "execute": false
+  },
+  "riskLevel": "low",
+  "reversible": true,
+  "sandbox": true,
+  "entry": "index.ts"
+}
