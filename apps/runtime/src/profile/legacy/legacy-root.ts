@@ -2,19 +2,25 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 export async function readLegacyActiveProfileId(legacyProfilesRoot: string): Promise<string | null> {
-  const legacyUserDataDir = path.dirname(path.resolve(legacyProfilesRoot))
-  const pointerPath = path.join(legacyUserDataDir, 'activeProfile.json')
+  const rootResolved = path.resolve(legacyProfilesRoot)
+  const legacyUserDataDir = path.dirname(rootResolved)
 
-  try {
-    const raw = await fs.readFile(pointerPath, 'utf8')
-    const parsed = JSON.parse(raw)
-    const id = typeof parsed?.profileId === 'string' ? parsed.profileId.trim() : ''
-    if (!id.length) return null
-    if (!/^[a-z0-9][a-z0-9-_]{2,63}$/.test(id)) return null
-    return id
-  } catch {
-    return null
+  const candidates = [path.join(rootResolved, 'activeProfile.json'), path.join(legacyUserDataDir, 'activeProfile.json')]
+
+  for (const pointerPath of candidates) {
+    try {
+      const raw = await fs.readFile(pointerPath, 'utf8')
+      const parsed = JSON.parse(raw)
+      const id = typeof parsed?.profileId === 'string' ? parsed.profileId.trim() : ''
+      if (!id.length) continue
+      if (!/^[a-z0-9][a-z0-9-_]{2,63}$/.test(id)) continue
+      return id
+    } catch {
+      continue
+    }
   }
+
+  return null
 }
 
 export async function resolveLegacyProfilesRoot(): Promise<string | null> {

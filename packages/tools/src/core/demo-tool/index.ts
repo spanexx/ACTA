@@ -35,6 +35,12 @@ export const demo_tool: ActaTool = {
   // CID:core-demo-tool-002 - Demo Tool Execute
   // Purpose: Returns a simple echoed response for testing loader/sandbox.
   async execute(input: any, context: ToolContext): Promise<ToolResult> {
+    if (input === 'test:tool-fail') {
+      return {
+        success: false,
+        error: 'Tool failed as requested by test'
+      }
+    }
     return {
       success: true,
       output: `Demo tool executed with input: ${JSON.stringify(input)}`,

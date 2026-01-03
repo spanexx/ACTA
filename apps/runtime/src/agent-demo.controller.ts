@@ -1,53 +1,93 @@
 import { Controller, Get, Query } from '@nestjs/common'
-import { Planner, SafetyGate, ExecutionOrchestrator } from '@acta/agent'
-import { LLMRouter, type LLMAdapter, type LLMRequest, type LLMResponse } from '@acta/llm'
+import { Planner, SafetyGate } from '@acta/agent'
+import {
+  AnthropicAdapter,
+  CustomAIAdapter,
+  GeminiAdapter,
+  LMStudioAdapter,
+  LLMRouter,
+  OllamaAdapter,
+  OpenAIAdapter,
+  toLLMError,
+} from '@acta/llm'
 import { createDefaultRegistry } from '@acta/tools'
 import { createLogger } from '@acta/logging'
 import type { TrustProfile } from '@acta/trust'
 
-class MockLLMAdapter implements LLMAdapter {
-  id = 'mock-agent-demo'
-  async generate(request: LLMRequest): Promise<LLMResponse> {
-    const planJson = JSON.stringify({
-      goal: `Process: ${request.prompt.substring(0, 50)}...`,
-      steps: [
-        {
-          id: 'step-1',
-          tool: 'explain.content',
-          intent: 'analyze input',
-          input: { text: request.prompt },
-          requiresPermission: false,
-        },
-      ],
-    })
-    return {
-      text: `Here is the plan:\n\`\`\`json\n${planJson}\n\`\`\``,
-      tokens: { prompt: 10, completion: 20, total: 30 },
-      model: 'mock-model',
-    }
-  }
-  supports(): boolean {
-    return true
-  }
-}
+import { ProfileService } from './profile.service'
 
 @Controller('agent-demo')
 export class AgentDemoController {
+  constructor(private readonly profileService: ProfileService) {}
+
   @Get()
-  async run(@Query('input') input = 'Hello Acta, process this request.') {
+  async run(@Query('input') input = 'Hello Acta, process this request.', @Query('profileId') profileId?: string) {
     const logger = createLogger('agent-demo')
     const events: Array<{ type: string; payload: any }> = []
 
+    const profileDoc = await this.profileService.getProfile(profileId)
+
     const profile: TrustProfile = {
-      profileId: 'agent-demo',
+      profileId: profileDoc.id,
       defaultTrustLevel: 2,
     }
 
     const tools = await createDefaultRegistry()
     const toolList = await tools.list()
 
-    const llmRouter = new LLMRouter()
-    llmRouter.register(new MockLLMAdapter())
+    const llmRouter = new LLMRouter({ defaultAdapterId: profileDoc.llm?.adapterId })
+    const adapterId = profileDoc.llm?.adapterId
+    if (!adapterId) {
+      throw toLLMError(new Error('No LLM provider configured'), {
+        code: 'llm.misconfigured',
+        message: 'No LLM provider configured. Configure an LLM provider in the active profile to enable planning.',
+        retryable: false,
+      })
+    }
+    if (adapterId === 'ollama') {
+      llmRouter.register(new OllamaAdapter({ baseUrl: profileDoc.llm?.baseUrl, model: profileDoc.llm?.model }))
+    } else if (adapterId === 'lmstudio') {
+      llmRouter.register(new LMStudioAdapter({ baseUrl: profileDoc.llm?.baseUrl, model: profileDoc.llm?.model }))
+    } else if (adapterId === 'openai') {
+      llmRouter.register(
+        new OpenAIAdapter({
+          apiKey: profileDoc.llm?.apiKey ?? '',
+          baseUrl: profileDoc.llm?.baseUrl,
+          model: profileDoc.llm?.model,
+        }),
+      )
+    } else if (adapterId === 'anthropic') {
+      llmRouter.register(
+        new AnthropicAdapter({
+          apiKey: profileDoc.llm?.apiKey ?? '',
+          baseUrl: profileDoc.llm?.baseUrl,
+          model: profileDoc.llm?.model,
+        }),
+      )
+    } else if (adapterId === 'gemini') {
+      llmRouter.register(
+        new GeminiAdapter({
+          apiKey: profileDoc.llm?.apiKey ?? '',
+          baseUrl: profileDoc.llm?.baseUrl,
+          model: profileDoc.llm?.model,
+        }),
+      )
+    } else if (adapterId === 'custom') {
+      llmRouter.register(
+        new CustomAIAdapter({
+          baseUrl: profileDoc.llm?.baseUrl ?? profileDoc.llm?.endpoint ?? '',
+          model: profileDoc.llm?.model,
+          headers: profileDoc.llm?.headers,
+        }),
+      )
+    } else {
+      throw toLLMError(new Error(`Unknown LLM provider: ${adapterId}`), {
+        code: 'llm.misconfigured',
+        message: `Unknown LLM provider: ${adapterId}`,
+        provider: adapterId,
+        retryable: false,
+      })
+    }
 
     const planner = new Planner(llmRouter)
     const safetyGate = new SafetyGate({ blockedTools: [], blockedScopes: [] })

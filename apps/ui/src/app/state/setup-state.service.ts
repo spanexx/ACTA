@@ -37,18 +37,70 @@ export class SetupStateService {
     modelProvider: 'ollama',
     model: 'llama3:8b',
     endpoint: 'http://localhost:11434',
+    apiKey: '',
+    headers: '',
     cloudWarnBeforeSending: true,
     trustLevel: 1,
   }
 
   ollamaModels: string[] = ['llama3:8b']
+  cloudModels: string[] = []
   testStatus = ''
+
+  private storageProfileId = 'default'
 
   constructor(
     private chat: ChatStateService,
     private session: SessionService,
     private runtimeIpc: RuntimeIpcService,
-  ) {}
+  ) {
+    this.storageProfileId = this.session.profileId
+    this.restoreDraft()
+
+    this.session.profileId$.subscribe(profileId => {
+      if (!profileId || profileId === this.storageProfileId) return
+      this.persistDraft()
+      this.storageProfileId = profileId
+      this.restoreDraft()
+    })
+  }
+
+  private storageKey(): string {
+    return `acta:ui:setupDraft:${this.storageProfileId}`
+  }
+
+  persistDraft(): void {
+    try {
+      globalThis.localStorage?.setItem(
+        this.storageKey(),
+        JSON.stringify({
+          step: this.step,
+          config: this.config,
+        }),
+      )
+    } catch {
+    }
+  }
+
+  private restoreDraft(): void {
+    try {
+      const raw = globalThis.localStorage?.getItem(this.storageKey())
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (!parsed || typeof parsed !== 'object') return
+
+      if (typeof (parsed as any).step === 'number') this.step = (parsed as any).step
+      const cfg = (parsed as any).config
+      if (cfg && typeof cfg === 'object') {
+        this.config = {
+          ...this.config,
+          ...cfg,
+          setupComplete: this.config.setupComplete,
+        }
+      }
+    } catch {
+    }
+  }
 
   // CID:setup-state.service-002 - Wizard Open/Close
   // Purpose: Toggles the setup wizard modal.
@@ -56,10 +108,12 @@ export class SetupStateService {
   // Used by: Setup wizard modal component
   openWizard(): void {
     this.open = true
+    this.persistDraft()
   }
 
   closeWizard(): void {
     this.open = false
+    this.persistDraft()
   }
 
   // CID:setup-state.service-003 - Load Config + Maybe Open Wizard
@@ -74,8 +128,10 @@ export class SetupStateService {
         setupComplete: Boolean(p.setupComplete),
         modelProvider: p.llm.adapterId as any,
         model: p.llm.model,
-        endpoint: p.llm.endpoint,
-        cloudWarnBeforeSending: p.llm.cloudWarnBeforeSending,
+        endpoint: p.llm.endpoint ?? p.llm.baseUrl,
+        apiKey: '',
+        headers: p.llm && (p.llm as any).headers ? JSON.stringify((p.llm as any).headers, null, 2) : '',
+        cloudWarnBeforeSending: p.llm.cloudWarnBeforeSending ?? true,
         trustLevel: (p.trust.defaultTrustLevel as any) ?? 1,
       }
 
@@ -84,9 +140,13 @@ export class SetupStateService {
         this.ollamaModels = candidate.length ? [candidate] : ['llama3:8b']
       }
 
+      this.cloudModels = []
+
       if (!this.config.setupComplete) {
         this.open = true
       }
+
+      this.restoreDraft()
     } catch {
       // ignore (UI scaffold only)
     }
@@ -96,39 +156,138 @@ export class SetupStateService {
   // Purpose: Validates Ollama endpoint via preload API and populates available models.
   // Uses: window.ActaAPI.testOllama()
   // Used by: Setup wizard modal component
-  async testOllamaEndpoint(): Promise<void> {
+  async testConnection(): Promise<void> {
     if (this.busy) return
+
+    const provider = this.config.modelProvider
+    if (!provider) return
+
+    if (provider !== 'ollama') {
+      this.ollamaModels = this.ollamaModels
+    }
+
     const endpoint = (this.config.endpoint ?? '').trim()
-    if (!endpoint.length) return
+    const apiKey = (this.config.apiKey ?? '').trim()
+    const headersText = (this.config.headers ?? '').trim()
+
+    const isLocal = provider === 'ollama' || provider === 'lmstudio' || provider === 'custom'
+    const isCloud = provider === 'openai' || provider === 'anthropic' || provider === 'gemini'
+
+    if (isLocal) {
+      if (!endpoint.length) return
+    }
+
+    if (isCloud) {
+      if (!apiKey.length) return
+    }
 
     this.busy = true
     this.testStatus = 'Testing…'
 
+    console.log(`[UI Setup State] Testing LLM connection:`, {
+      provider,
+      mode: isCloud ? 'cloud' : 'local',
+      endpoint: isLocal ? endpoint : undefined,
+      hasApiKey: isCloud ? !!apiKey : undefined,
+      model: this.config.model
+    })
+
     try {
-      if (!window.ActaAPI) {
-        this.testStatus = 'ActaAPI not available'
-        return
-      }
-
-      const res = await window.ActaAPI.testOllama({ endpoint })
-      if (!res.ok) {
-        this.testStatus = `Failed: ${res.error ?? 'unknown error'}`
-        return
-      }
-
-      const models = (res.models ?? []).filter(m => typeof m === 'string' && m.trim().length)
-      if (models.length) {
-        this.ollamaModels = models
-        if (!this.config.model || !models.includes(this.config.model)) {
-          this.config.model = models[0]
+      let headers: Record<string, string> | undefined
+      if (provider === 'custom' && headersText.length) {
+        try {
+          const parsed = JSON.parse(headersText)
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            this.testStatus = 'Failed: headers must be a JSON object'
+            return
+          }
+          const out: Record<string, string> = {}
+          for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+            if (typeof k !== 'string' || !k.trim()) {
+              this.testStatus = 'Failed: headers contains an invalid header name'
+              return
+            }
+            if (typeof v !== 'string') {
+              this.testStatus = `Failed: header ${k} must be a string`
+              return
+            }
+            out[k] = v
+          }
+          headers = out
+        } catch {
+          this.testStatus = 'Failed: invalid headers JSON'
+          return
         }
       }
 
+      const res = await this.runtimeIpc.llmHealthCheck({
+        profileId: this.session.profileId,
+        config: {
+          mode: isCloud ? 'cloud' : 'local',
+          adapterId: provider,
+          model: (this.config.model ?? '').trim() || undefined,
+          baseUrl: isLocal && endpoint.length ? endpoint : undefined,
+          endpoint: isLocal && endpoint.length ? endpoint : undefined,
+          apiKey: apiKey.length ? apiKey : undefined,
+          headers,
+        },
+      })
+
+      if (!res.ok) {
+        console.log(`[UI Setup State] LLM connection test failed:`, {
+          provider,
+          error: res.error?.message
+        })
+        this.testStatus = `Failed: ${res.error?.message ?? 'unknown error'}`
+        return
+      }
+
+      const models = (res.models ?? []).filter((m: string) => typeof m === 'string' && m.trim().length)
+      if (provider === 'openai' || provider === 'anthropic' || provider === 'gemini') {
+        this.cloudModels = models
+        console.log('[UI Setup State] Cloud models loaded', {
+          provider,
+          count: models.length,
+          first: models[0],
+        })
+      } else {
+        this.cloudModels = []
+      }
+      if (models.length) {
+        if (provider === 'ollama') {
+          this.ollamaModels = models
+          if (!this.config.model || !models.includes(this.config.model)) {
+            this.config.model = models[0]
+          }
+        } else if (provider === 'gemini') {
+          const desired = (this.config.model ?? '').trim()
+          const normalized = desired.length && !desired.startsWith('models/') ? `models/${desired}` : desired
+          if (!normalized.length || !models.includes(normalized)) {
+            const pick = models.find(m => typeof m === 'string' && m.startsWith('models/gemini')) ?? models[0]
+            if (typeof pick === 'string' && pick.trim().length) {
+              this.config.model = pick
+            }
+          }
+        }
+      }
+
+      console.log(`[UI Setup State] LLM connection test succeeded:`, {
+        provider,
+        modelsFound: models.length,
+        firstModel: models[0] || undefined
+      })
+
       this.testStatus = models.length ? `OK: ${models.length} model(s) found` : 'OK: no models found'
-    } catch {
-      this.testStatus = 'Failed: request error'
+    } catch (err: any) {
+      const message = typeof err?.message === 'string' && err.message.trim().length ? err.message : 'request error'
+      console.log(`[UI Setup State] LLM connection test error:`, {
+        provider,
+        error: message
+      })
+      this.testStatus = `Failed: ${message}`
     } finally {
       this.busy = false
+      this.persistDraft()
     }
   }
 
@@ -143,6 +302,18 @@ export class SetupStateService {
 
     if (provider === 'ollama') {
       return !!(this.config.endpoint ?? '').trim() && !!(this.config.model ?? '').trim()
+    }
+
+    if (provider === 'lmstudio') {
+      return !!(this.config.endpoint ?? '').trim() && !!(this.config.model ?? '').trim()
+    }
+
+    if (provider === 'custom') {
+      return !!(this.config.endpoint ?? '').trim()
+    }
+
+    if (provider === 'openai' || provider === 'anthropic' || provider === 'gemini') {
+      return !!(this.config.apiKey ?? '').trim() && !!(this.config.model ?? '').trim()
     }
 
     return true
@@ -162,8 +333,22 @@ export class SetupStateService {
       return `Provider: Ollama • Endpoint: ${endpoint} • Model: ${model} • Trust: ${trust}`
     }
 
+    if (provider === 'lmstudio') {
+      const endpoint = (this.config.endpoint ?? '').trim() || 'unset'
+      const model = (this.config.model ?? '').trim() || 'unset'
+      return `Provider: LM Studio • Base URL: ${endpoint} • Model: ${model} • Trust: ${trust}`
+    }
+
+    if (provider === 'custom') {
+      const endpoint = (this.config.endpoint ?? '').trim() || 'unset'
+      const model = (this.config.model ?? '').trim() || '(optional)'
+      return `Provider: Custom AI • Base URL: ${endpoint} • Model: ${model} • Trust: ${trust}`
+    }
+
     const warn = this.config.cloudWarnBeforeSending ? 'warn before sending' : 'no warning'
-    return `Provider: ${provider} • ${warn} • Trust: ${trust}`
+    const model = (this.config.model ?? '').trim() || 'unset'
+    const key = (this.config.apiKey ?? '').trim().length ? 'api key set' : 'api key unset'
+    return `Provider: ${provider} • Model: ${model} • ${key} • ${warn} • Trust: ${trust}`
   }
 
   // CID:setup-state.service-007 - Persist Setup
@@ -178,6 +363,27 @@ export class SetupStateService {
     try {
       const provider = this.config.modelProvider ?? 'ollama'
       const mode = provider === 'openai' || provider === 'anthropic' || provider === 'gemini' ? 'cloud' : 'local'
+      const endpoint = (this.config.endpoint ?? '').trim()
+      const isCloud = provider === 'openai' || provider === 'anthropic' || provider === 'gemini'
+      const baseUrl = !isCloud && endpoint.length ? endpoint : undefined
+      const endpointOut = !isCloud && endpoint.length ? endpoint : undefined
+
+      let headers: Record<string, string> | undefined
+      if (provider === 'custom') {
+        const headersText = (this.config.headers ?? '').trim()
+        if (headersText.length) {
+          const parsed = JSON.parse(headersText)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const out: Record<string, string> = {}
+            for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+              if (typeof k === 'string' && k.trim() && typeof v === 'string') {
+                out[k] = v
+              }
+            }
+            headers = out
+          }
+        }
+      }
 
       const res = await this.runtimeIpc.profileUpdate({
         profileId: this.session.profileId,
@@ -190,7 +396,10 @@ export class SetupStateService {
             mode,
             adapterId: provider as any,
             model: this.config.model ?? 'llama3:8b',
-            endpoint: this.config.endpoint,
+            baseUrl,
+            endpoint: endpointOut,
+            apiKey: (this.config.apiKey ?? '').trim() || undefined,
+            headers,
             cloudWarnBeforeSending: this.config.cloudWarnBeforeSending,
           },
         },
@@ -208,6 +417,7 @@ export class SetupStateService {
 
       this.open = false
       this.chat.addSystemMessage(`Setup saved for profile ${this.session.profileId}.`, Date.now())
+      this.persistDraft()
     } catch {
       // ignore (UI scaffold only)
     } finally {

@@ -2,6 +2,9 @@ import { Injectable } from '@angular/core'
 import type {
   ActaMessage,
   ActaMessageType,
+  ChatRequest,
+  LLMHealthCheckPayload,
+  LLMHealthCheckRequest,
   ProfileActivePayload,
   ProfileCreatePayload,
   ProfileCreateRequest,
@@ -39,6 +42,10 @@ export class RuntimeIpcService {
 
   sendTaskRequest(payload: TaskRequest, opts?: { profileId?: string; correlationId?: string }): string {
     return this.core.sendTaskRequest(payload, opts)
+  }
+
+  sendChatRequest(payload: ChatRequest, opts?: { profileId?: string; correlationId?: string }): string {
+    return this.core.sendChatRequest(payload, opts)
   }
 
   sendTaskStop(payload: TaskStopRequest, opts?: { profileId?: string; correlationId?: string }): void {
@@ -86,5 +93,9 @@ export class RuntimeIpcService {
 
   async profileUpdate(payload: ProfileUpdateRequest): Promise<ProfileUpdatePayload> {
     return await this.core.profileUpdate(payload)
+  }
+
+  async llmHealthCheck(payload: LLMHealthCheckRequest): Promise<LLMHealthCheckPayload> {
+    return await this.core.llmHealthCheck(payload)
   }
 }

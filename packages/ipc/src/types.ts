@@ -46,6 +46,7 @@ export type ActaMessageType =
   | 'task.permission'
   | 'permission.request'
   | 'permission.response'
+  | 'llm.healthCheck'
   | 'profile.list'
   | 'profile.create'
   | 'profile.delete'
@@ -55,6 +56,9 @@ export type ActaMessageType =
   | 'profile.update'
   | 'task.result'
   | 'task.error'
+  | 'chat.request'
+  | 'chat.response'
+  | 'chat.error'
   | 'memory.read'
   | 'memory.write'
   | 'trust.prompt'
@@ -70,6 +74,28 @@ export interface TaskRequest {
     clipboard?: boolean
   }
   trustLevel?: 'low' | 'medium' | 'high'
+}
+
+export interface ChatRequest {
+  input: string
+  context?: {
+    files?: string[]
+  }
+}
+
+export interface ChatResponse {
+  text: string
+  model?: string
+  tokens?: {
+    prompt?: number
+    completion?: number
+    total?: number
+  }
+}
+
+export interface ChatError {
+  message: string
+  details?: string
 }
 
 // CID:ipc-types-004 - TaskStopRequest
@@ -177,6 +203,28 @@ export interface PermissionResponsePayload {
   remember?: boolean
 }
 
+export interface LLMHealthCheckRequest {
+  profileId?: string
+  config?: {
+    mode?: 'local' | 'cloud'
+    adapterId?: string
+    model?: string
+    baseUrl?: string
+    endpoint?: string
+    apiKey?: string
+    headers?: Record<string, string>
+  }
+}
+
+export interface LLMHealthCheckPayload {
+  ok: boolean
+  models?: string[]
+  error?: {
+    code?: string
+    message: string
+  }
+}
+
 // CID:ipc-types-015a - ProfileSummary
 export interface ProfileSummary {
   id: string
@@ -238,6 +286,7 @@ export interface ProfileDoc {
     model: string
     baseUrl?: string
     endpoint?: string
+    headers?: Record<string, string>
     cloudWarnBeforeSending?: boolean
     defaults?: {
       temperature?: number
@@ -266,6 +315,8 @@ export interface ProfileUpdateRequest {
       model?: string
       baseUrl?: string
       endpoint?: string
+      apiKey?: string
+      headers?: Record<string, string>
       cloudWarnBeforeSending?: boolean
       defaults?: {
         temperature?: number

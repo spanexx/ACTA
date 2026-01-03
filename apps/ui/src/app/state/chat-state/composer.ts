@@ -26,6 +26,7 @@ export function sendTaskFromDraft(opts: {
   planMessageIdByCorrelation: Map<string, string>
   runtimeIpc: RuntimeIpcService
   profileId: string
+  correlationId?: string
 }): {
   nextDraft: string
   nextPendingAttachments: Attachment[]
@@ -45,7 +46,7 @@ export function sendTaskFromDraft(opts: {
   }
 
   const now = Date.now()
-  const taskId = newId()
+  const taskId = opts.correlationId ?? newId()
 
   const userMsg: ChatMessage = {
     id: newId(),
@@ -53,6 +54,7 @@ export function sendTaskFromDraft(opts: {
     timestamp: now,
     text: text || 'Sent attachments.',
     attachments,
+    lane: 'task',
   }
 
   try {
@@ -81,6 +83,7 @@ export function sendTaskFromDraft(opts: {
       type: 'system',
       timestamp: now + 1,
       text: 'Task sent to runtime. Waiting for plan…',
+      lane: 'task',
     }
 
     const planPlaceholder: ChatMessage = {
@@ -88,6 +91,7 @@ export function sendTaskFromDraft(opts: {
       type: 'acta',
       timestamp: now + 2,
       text: 'Planning…',
+      lane: 'task',
       plan: {
         goal: 'Planning…',
         collapsed: false,
@@ -112,8 +116,94 @@ export function sendTaskFromDraft(opts: {
     return {
       nextDraft: opts.draft,
       nextPendingAttachments: opts.pendingAttachments,
-      nextMessages: [...opts.messages, userMsg, errorMsg],
+      nextMessages: [...opts.messages, userMsg, { ...errorMsg, lane: 'task' }],
       nextActiveCorrelationId: taskId,
+    }
+  }
+}
+
+export function sendChatFromDraft(opts: {
+  draft: string
+  pendingAttachments: Attachment[]
+  messages: ChatMessage[]
+  runtimeIpc: RuntimeIpcService
+  profileId: string
+  correlationId?: string
+}): {
+  nextDraft: string
+  nextPendingAttachments: Attachment[]
+  nextMessages: ChatMessage[]
+  nextActiveCorrelationId: string | null
+} {
+  const text = opts.draft.trim()
+  const attachments = opts.pendingAttachments.length ? [...opts.pendingAttachments] : undefined
+
+  if (!text && !attachments) {
+    return {
+      nextDraft: opts.draft,
+      nextPendingAttachments: opts.pendingAttachments,
+      nextMessages: opts.messages,
+      nextActiveCorrelationId: null,
+    }
+  }
+
+  const now = Date.now()
+  const chatId = opts.correlationId ?? newId()
+
+  const userMsg: ChatMessage = {
+    id: newId(),
+    type: 'user',
+    timestamp: now,
+    text: text || 'Sent attachments.',
+    attachments,
+    lane: 'chat',
+  }
+
+  try {
+    const files = attachments
+      ? attachments
+          .map(a => a.path)
+          .filter((p): p is string => typeof p === 'string' && p.length > 0)
+      : undefined
+
+    opts.runtimeIpc.sendChatRequest(
+      {
+        input: text || 'Sent attachments.',
+        context: files && files.length ? { files } : undefined,
+      },
+      {
+        profileId: opts.profileId,
+        correlationId: chatId,
+      },
+    )
+
+    const pendingMsg: ChatMessage = {
+      id: newId(),
+      type: 'system',
+      timestamp: now + 1,
+      text: 'Chat sent to runtime. Waiting for response…',
+      lane: 'chat',
+    }
+
+    return {
+      nextDraft: '',
+      nextPendingAttachments: [],
+      nextMessages: [...opts.messages, userMsg, pendingMsg],
+      nextActiveCorrelationId: null,
+    }
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'Runtime is not connected'
+    const errorMsg = makeMessage(
+      'system',
+      `Could not send chat: ${reason}. Please check the runtime and try again.`,
+      now + 1,
+    )
+
+    return {
+      nextDraft: opts.draft,
+      nextPendingAttachments: opts.pendingAttachments,
+      nextMessages: [...opts.messages, userMsg, { ...errorMsg, lane: 'chat' }],
+      nextActiveCorrelationId: null,
     }
   }
 }

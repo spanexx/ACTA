@@ -15,9 +15,21 @@ import type { LLMAdapter, LLMRequest, LLMResponse } from '@acta/llm'
 // Uses: LLMAdapter interface, prompt inspection to craft fake plans
 // Used by: Runtime task execution for local development/testing
 export class RuntimeMockLLMAdapter implements LLMAdapter {
-  id = 'mock-runtime'
+  id: string
+
+  constructor(id = 'mock-runtime') {
+    this.id = id
+  }
 
   async generate(request: LLMRequest): Promise<LLMResponse> {
+    if (request.metadata?.lane === 'chat') {
+      return {
+        text: `Mock chat response: ${String(request.prompt ?? '').slice(0, 200)}`,
+        tokens: { prompt: 5, completion: 10, total: 15 },
+        model: 'mock-model',
+      }
+    }
+
     const hasAttachments = request.prompt.includes('Attachments (paths only):')
 
     const wantsTwoSteps = request.prompt.includes('test:two-steps')
@@ -26,7 +38,8 @@ export class RuntimeMockLLMAdapter implements LLMAdapter {
     const forceSlow = request.prompt.includes('test:slow')
 
     const toolId = forceToolMissing ? 'missing.tool' : 'explain.content'
-    const step1Text = forceToolFail ? '' : forceSlow ? `SLOW ${request.prompt}` : request.prompt
+    const step1Text = forceToolFail ? 'test:tool-fail' : forceSlow ? `SLOW ${request.prompt}` : request.prompt
+    const step1Input = { text: step1Text }
 
     const steps = wantsTwoSteps
       ? [
@@ -34,7 +47,7 @@ export class RuntimeMockLLMAdapter implements LLMAdapter {
             id: 'step-1',
             tool: toolId,
             intent: 'analyze input',
-            input: { text: step1Text },
+            input: step1Input,
             requiresPermission: hasAttachments,
           },
           {
@@ -50,7 +63,7 @@ export class RuntimeMockLLMAdapter implements LLMAdapter {
             id: 'step-1',
             tool: toolId,
             intent: 'analyze input',
-            input: { text: step1Text },
+            input: step1Input,
             requiresPermission: hasAttachments,
           },
         ]

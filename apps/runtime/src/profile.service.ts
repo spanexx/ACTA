@@ -29,8 +29,8 @@ export class ProfileService implements OnModuleInit {
   // Purpose: Initialize core service with profile state
   // Uses: createProfileServiceState factory, ProfileServiceCore
   // Used by: NestJS dependency injection system
-  constructor(profileRoot?: string) {
-    this.core = new ProfileServiceCore(createProfileServiceState(profileRoot))
+  constructor() {
+    this.core = new ProfileServiceCore(createProfileServiceState())
   }
 
   // CID:profile-service-003 - Lifecycle hooks (NestJS)

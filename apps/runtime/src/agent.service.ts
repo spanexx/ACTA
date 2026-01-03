@@ -1,6 +1,8 @@
 import type { RuntimeTask } from '@acta/ipc'
 import type { PermissionDecisionType, PermissionRequest } from '@acta/trust'
 
+import type { ProfileService } from './profile.service'
+
 /**
  * Code Map: AgentService (Task execution manager)
  * - CID:agent-service-001 → Task run options interface
@@ -24,6 +26,7 @@ export type AgentTaskRunOptions = {
   logsDir?: string
   memoryDir?: string
   trustDir?: string
+  profileService: ProfileService
   emitEvent: (type: string, payload: any) => void
   waitForPermission: (request: PermissionRequest) => Promise<PermissionDecisionType>
   isCancelled?: () => boolean

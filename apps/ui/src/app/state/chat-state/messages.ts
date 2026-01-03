@@ -8,7 +8,7 @@
  * Quick lookup: grep -n "CID:messages-" /home/spanexx/Shared/Projects/ACTA/apps/ui/src/app/state/chat-state/messages.ts
  */
 
-import type { ChatMessage, ChatMessageType } from '../../models/ui.models'
+import type { ChatMessage, ChatMessageLane, ChatMessageType } from '../../models/ui.models'
 import { newId } from '../../shared/ids'
 
 /**
@@ -17,11 +17,12 @@ import { newId } from '../../shared/ids'
  * Uses: ChatMessage, ChatMessageType types from ui.models, newId from shared ids
  * Used by: Chat state modules for creating system and user messages
  */
-export function makeMessage(type: ChatMessageType, text: string, timestamp: number): ChatMessage {
+export function makeMessage(type: ChatMessageType, text: string, timestamp: number, lane?: ChatMessageLane): ChatMessage {
   return {
     id: newId(),
     type,
     timestamp,
     text,
+    lane,
   }
 }

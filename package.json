@@ -2,13 +2,14 @@
   "name": "acta",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=@acta/runtime\"",
-    "dev:ui": "npm run dev --workspace=@acta/ui",
+    "dev:ui": "npm run build && npm run dev --workspace=@acta/ui",
     "dev:all": "concurrently \"npm run dev --workspace=@acta/runtime\" \"npm run dev --workspace=@acta/ui\"",
     "build": "npm run build --workspaces --if-present",
     "build:runtime": "npm run build --workspace=@acta/runtime",
@@ -43,6 +44,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.13.5",
     "@nestjs/platform-express": "^11.1.11"
   }
 }

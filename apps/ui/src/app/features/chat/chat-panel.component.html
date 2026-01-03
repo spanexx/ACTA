@@ -5,6 +5,7 @@
             [class.chat-message--system]="msg.type === 'system'">
             <header class="chat-message__meta">
                 <span class="chat-message__author">{{ labelForType(msg.type) }}</span>
+                <span class="chat-message__lane" *ngIf="msg.lane === 'chat' || msg.lane === 'task'">{{ msg.lane === 'chat' ? 'Chat' : 'Task' }}</span>
                 <span class="chat-message__time">{{ formatTime(msg.timestamp) }}</span>
             </header>
 
@@ -38,7 +39,16 @@
 
     <form class="composer" (submit)="chat.onSubmit($event)">
         <div class="composer__box">
-            <textarea name="draft" [(ngModel)]="chat.draft" class="composer__input" placeholder="Ask a follow up…"
+            <div class="composer__mode">
+                <label class="composer__modeLabel">
+                    <span class="composer__modeText">Mode</span>
+                    <select name="mode" [(ngModel)]="chat.mode" (ngModelChange)="chat.persist()" class="composer__modeSelect">
+                        <option value="task">Task</option>
+                        <option value="chat">Chat</option>
+                    </select>
+                </label>
+            </div>
+            <textarea name="draft" [(ngModel)]="chat.draft" (ngModelChange)="chat.persist()" class="composer__input" placeholder="Ask a follow up…"
                 (keydown)="chat.onDraftKeydown($event)"></textarea>
 
             <div class="composer__actions">

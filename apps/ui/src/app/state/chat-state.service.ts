@@ -23,10 +23,12 @@
 import { Injectable } from '@angular/core'
 import type { ActaMessage } from '@acta/ipc'
 import { RuntimeIpcService } from '../runtime-ipc.service'
-import type { Attachment, ChatMessage, ChatMessageType, ChatPlanStep, PlanStepStatus } from '../models/ui.models'
+import type { Attachment, ChatMessage, ChatMessageLane, ChatMessageType, ChatPlanStep, PlanStepStatus } from '../models/ui.models'
+import { newId } from '../shared/ids'
 import { SessionService } from './session.service'
 import { buildAttachments, attachmentNotice } from './chat-state/attachments'
-import { sendTaskFromDraft } from './chat-state/composer'
+import { sendChatFromDraft, sendTaskFromDraft } from './chat-state/composer'
+import { shouldAutoChat } from './chat-state/greeting-classifier'
 import { makeMessage } from './chat-state/messages'
 import { applyTaskPlanMessage, applyTaskStepMessage } from './chat-state/runtime-handlers'
 
@@ -37,23 +39,72 @@ import { applyTaskPlanMessage, applyTaskStepMessage } from './chat-state/runtime
 @Injectable({ providedIn: 'root' })
 export class ChatStateService {
   draft = ''
+  mode: ChatMessageLane = 'task'
   pendingAttachments: Attachment[] = []
   messages: ChatMessage[] = []
 
   private planMessageIdByCorrelation = new Map<string, string>()
   private activeCorrelationId: string | null = null
 
+  private storageProfileId = 'default'
+
   constructor(
     private runtimeIpc: RuntimeIpcService,
     private session: SessionService,
-  ) {}
+  ) {
+    this.storageProfileId = this.session.profileId
+    this.restore()
+
+    this.session.profileId$.subscribe(profileId => {
+      if (!profileId || profileId === this.storageProfileId) return
+      this.persist()
+      this.storageProfileId = profileId
+      this.restore()
+    })
+  }
+
+  private storageKey(): string {
+    return `acta:ui:chat:${this.storageProfileId}`
+  }
+
+  persist(): void {
+    try {
+      globalThis.localStorage?.setItem(
+        this.storageKey(),
+        JSON.stringify({
+          draft: this.draft,
+          mode: this.mode,
+          messages: this.messages,
+          activeCorrelationId: this.activeCorrelationId,
+        }),
+      )
+    } catch {
+    }
+  }
+
+  private restore(): void {
+    try {
+      const raw = globalThis.localStorage?.getItem(this.storageKey())
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') {
+        if (typeof (parsed as any).draft === 'string') this.draft = (parsed as any).draft
+        if ((parsed as any).mode === 'task' || (parsed as any).mode === 'chat') this.mode = (parsed as any).mode
+        if (Array.isArray((parsed as any).messages)) this.messages = (parsed as any).messages
+        this.activeCorrelationId =
+          typeof (parsed as any).activeCorrelationId === 'string' ? (parsed as any).activeCorrelationId : null
+      }
+    } catch {
+    }
+  }
 
   // CID:chat-state.service-002 - Append System Message
   // Purpose: Appends a system message to the message list.
   // Uses: makeMessage()
   // Used by: Many state services (setup/trust/profiles/demo/etc.) to surface status to the user
-  addSystemMessage(text: string, timestamp = Date.now()): void {
-    this.messages = [...this.messages, makeMessage('system', text, timestamp)]
+  addSystemMessage(text: string, timestamp = Date.now(), lane?: ChatMessageLane): void {
+    this.messages = [...this.messages, makeMessage('system', text, timestamp, lane)]
+    this.persist()
   }
 
   // CID:chat-state.service-003 - Task Plan Message Handler
@@ -76,6 +127,7 @@ export class ChatStateService {
       plan,
       now: Date.now(),
     })
+    this.persist()
   }
 
   // CID:chat-state.service-004 - Task Step Message Handler
@@ -100,6 +152,7 @@ export class ChatStateService {
       stepId,
       status,
     })
+    this.persist()
   }
 
   // CID:chat-state.service-005 - Task Result Handler
@@ -110,9 +163,10 @@ export class ChatStateService {
     if (msg.type !== 'task.result') return
     const payload = msg.payload as any
     const report = typeof payload?.report === 'string' ? payload.report.trim() : ''
-    this.addSystemMessage(report.length ? report : 'Task completed.')
+    this.addSystemMessage(report.length ? report : 'Task completed.', Date.now(), 'task')
 
     this.clearActiveCorrelation(msg)
+    this.persist()
   }
 
   // CID:chat-state.service-006 - Task Error Handler
@@ -122,9 +176,23 @@ export class ChatStateService {
   handleTaskErrorMessage(msg: ActaMessage): void {
     if (msg.type !== 'task.error') return
     const err = msg.payload as any
-    this.addSystemMessage(`Task error: ${String(err?.message ?? 'unknown')}`)
+    const message =
+      typeof err?.message === 'string'
+        ? err.message
+        : typeof err?.details === 'string'
+          ? err.details
+          : (() => {
+              try {
+                return JSON.stringify(err)
+              } catch {
+                return String(err)
+              }
+            })()
+
+    this.addSystemMessage(`Task error: ${message}`, Date.now(), 'task')
 
     this.clearActiveCorrelation(msg)
+    this.persist()
   }
 
   // CID:chat-state.service-007 - Task Stop Request
@@ -170,6 +238,7 @@ export class ChatStateService {
         },
       }
     })
+    this.persist()
   }
 
   // CID:chat-state.service-009 - Composer UI Handlers + Send
@@ -194,10 +263,12 @@ export class ChatStateService {
     const input = event.target as HTMLInputElement
     this.addAttachments(input.files)
     input.value = ''
+    this.persist()
   }
 
   removePendingAttachment(id: string): void {
     this.pendingAttachments = this.pendingAttachments.filter(a => a.id !== id)
+    this.persist()
   }
 
   canSend(): boolean {
@@ -207,19 +278,49 @@ export class ChatStateService {
   send(): void {
     if (!this.canSend()) return
 
-    const res = sendTaskFromDraft({
+    const autoChat = shouldAutoChat({
+      mode: this.mode,
       draft: this.draft,
-      pendingAttachments: this.pendingAttachments,
-      messages: this.messages,
-      planMessageIdByCorrelation: this.planMessageIdByCorrelation,
-      runtimeIpc: this.runtimeIpc,
-      profileId: this.session.profileId,
+      pendingAttachmentsCount: this.pendingAttachments.length,
     })
+
+    const lane: ChatMessageLane = this.mode === 'chat' || autoChat ? 'chat' : 'task'
+    const reason = this.mode === 'chat' ? 'user-selected' : autoChat ? 'auto-greeting' : 'user-selected'
+    const correlationId = newId()
+
+    console.info('[UI Chat] send', {
+      lane,
+      reason,
+      correlationId,
+      profileId: this.session.profileId,
+      hasAttachments: this.pendingAttachments.length > 0,
+    })
+
+    const res =
+      lane === 'chat'
+        ? sendChatFromDraft({
+            draft: this.draft,
+            pendingAttachments: this.pendingAttachments,
+            messages: this.messages,
+            runtimeIpc: this.runtimeIpc,
+            profileId: this.session.profileId,
+            correlationId,
+          })
+        : sendTaskFromDraft({
+            draft: this.draft,
+            pendingAttachments: this.pendingAttachments,
+            messages: this.messages,
+            planMessageIdByCorrelation: this.planMessageIdByCorrelation,
+            runtimeIpc: this.runtimeIpc,
+            profileId: this.session.profileId,
+            correlationId,
+          })
 
     this.draft = res.nextDraft
     this.pendingAttachments = res.nextPendingAttachments
     this.messages = res.nextMessages
     this.activeCorrelationId = res.nextActiveCorrelationId
+    this.persist()
   }
 
   // CID:chat-state.service-010 - Attachment Intake
@@ -231,7 +332,48 @@ export class ChatStateService {
     if (!next.length) return
 
     this.pendingAttachments = [...this.pendingAttachments, ...next]
-    this.addSystemMessage(attachmentNotice(next.length), Date.now())
+    this.addSystemMessage(attachmentNotice(next.length), Date.now(), this.mode)
+    this.persist()
+  }
+
+  handleChatResponseMessage(msg: ActaMessage): void {
+    if (msg.type !== 'chat.response') return
+
+    console.info('[UI Chat] chat.response', {
+      correlationId: msg.correlationId,
+      replyTo: (msg as any).replyTo,
+    })
+
+    const payload = msg.payload as any
+    const text = typeof payload?.text === 'string' ? payload.text : ''
+    if (!text.trim().length) {
+      this.addSystemMessage('Chat response received.', Date.now(), 'chat')
+      return
+    }
+
+    const chatMsg: ChatMessage = {
+      id: String(msg.id),
+      type: 'acta',
+      timestamp: typeof msg.timestamp === 'number' ? msg.timestamp : Date.now(),
+      text,
+      lane: 'chat',
+    }
+    this.messages = [...this.messages, chatMsg]
+    this.persist()
+  }
+
+  handleChatErrorMessage(msg: ActaMessage): void {
+    if (msg.type !== 'chat.error') return
+
+    console.warn('[UI Chat] chat.error', {
+      correlationId: msg.correlationId,
+      replyTo: (msg as any).replyTo,
+    })
+
+    const payload = msg.payload as any
+    const message = typeof payload?.message === 'string' ? payload.message : 'Unknown error'
+    this.addSystemMessage(`Chat error: ${message}`, Date.now(), 'chat')
+    this.persist()
   }
 
   // CID:chat-state.service-011 - Correlation Cleanup

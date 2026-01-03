@@ -231,6 +231,15 @@ acta-permission-modal {
   font-weight: 600;
 }
 
+ .chat-message__lane {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+  font-size: 11px;
+ }
+
 .chat-message__text {
   white-space: pre-wrap;
   line-height: 1.4;
@@ -362,6 +371,35 @@ acta-permission-modal {
   border-radius: 12px;
   overflow: hidden;
 }
+
+ .composer__mode {
+  padding: 8px 10px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  justify-content: flex-start;
+ }
+
+ .composer__modeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #9ca3af;
+ }
+
+ .composer__modeText {
+  font-weight: 600;
+ }
+
+ .composer__modeSelect {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7eb;
+  border-radius: 10px;
+  padding: 4px 8px;
+  font-size: 12px;
+ }
 
 .composer__input {
   width: 100%;
@@ -961,4 +999,35 @@ acta-permission-modal {
 
 .permission-modal__btn--primary:hover {
   background: #e5e7eb;
+}
+
+@media (max-width: 900px) {
+  .split {
+    flex-direction: column;
+  }
+
+  .split > acta-tool-panel,
+  .tool-panel {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .topbar__left,
+  .topbar__right {
+    flex-wrap: wrap;
+  }
+
+  .topbar__right {
+    justify-content: flex-start;
+  }
 }

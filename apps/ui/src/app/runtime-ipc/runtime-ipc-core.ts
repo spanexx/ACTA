@@ -28,6 +28,9 @@ import { BehaviorSubject, Subject } from 'rxjs'
 import type {
   ActaMessage,
   ActaMessageType,
+  ChatRequest,
+  LLMHealthCheckPayload,
+  LLMHealthCheckRequest,
   ProfileActivePayload,
   ProfileCreatePayload,
   ProfileCreateRequest,
@@ -50,6 +53,7 @@ import { ReconnectController } from './reconnect'
 import {
   buildPermissionResponseMessage,
   buildRequestMessage,
+  buildChatRequestMessage,
   buildTaskRequestMessage,
   buildTaskStopMessage,
 } from './outgoing'
@@ -110,12 +114,14 @@ export class RuntimeIpcCore {
 
     ws.onclose = () => {
       this.ws = null
+      this.pending.clear()
       this.connectionSubject.next({ status: 'disconnected' })
       this.scheduleReconnect()
     }
 
     ws.onerror = () => {
       if (!this.shouldRun) return
+      this.pending.clear()
       this.connectionSubject.next({ status: 'disconnected', error: 'WebSocket error' })
     }
 
@@ -124,6 +130,26 @@ export class RuntimeIpcCore {
       if (!parsed) return
 
       if (this.pending.resolveIfPending(parsed)) return
+
+      const replyTo = typeof (parsed as any).replyTo === 'string' ? String((parsed as any).replyTo) : ''
+      if (replyTo.length) {
+        const shouldWarn =
+          parsed.type === 'llm.healthCheck' ||
+          parsed.type === 'profile.list' ||
+          parsed.type === 'profile.create' ||
+          parsed.type === 'profile.delete' ||
+          parsed.type === 'profile.switch' ||
+          parsed.type === 'profile.active' ||
+          parsed.type === 'profile.get' ||
+          parsed.type === 'profile.update'
+
+        if (shouldWarn) {
+          console.warn('[UI Runtime IPC] Received reply with no matching pending request', {
+            type: parsed.type,
+            replyTo,
+          })
+        }
+      }
       this.messagesSubject.next(parsed)
     }
   }
@@ -143,6 +169,8 @@ export class RuntimeIpcCore {
       ws.close()
     }
 
+    this.pending.clear()
+
     this.connectionSubject.next({ status: 'disconnected' })
   }
 
@@ -153,6 +181,19 @@ export class RuntimeIpcCore {
   sendTaskRequest(payload: TaskRequest, opts?: { profileId?: string; correlationId?: string }): string {
     const correlationId = opts?.correlationId ?? newId()
     const msg = buildTaskRequestMessage({
+      id: newId(),
+      correlationId,
+      payload,
+      profileId: opts?.profileId,
+    })
+
+    this.sendRaw(msg)
+    return correlationId
+  }
+
+  sendChatRequest(payload: ChatRequest, opts?: { profileId?: string; correlationId?: string }): string {
+    const correlationId = opts?.correlationId ?? newId()
+    const msg = buildChatRequestMessage({
       id: newId(),
       correlationId,
       payload,
@@ -220,7 +261,13 @@ export class RuntimeIpcCore {
     })
 
     const replyPromise = this.pending.waitForReply(id, timeoutMs)
-    this.sendRaw(msg)
+    try {
+      this.sendRaw(msg)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      this.pending.cancel(id, error)
+      return await replyPromise
+    }
     return await replyPromise
   }
 
@@ -254,6 +301,25 @@ export class RuntimeIpcCore {
 
   async profileUpdate(payload: ProfileUpdateRequest): Promise<ProfileUpdatePayload> {
     return await this.profileApi.profileUpdate(payload)
+  }
+
+  async llmHealthCheck(payload: LLMHealthCheckRequest): Promise<LLMHealthCheckPayload> {
+    console.log(`[UI Runtime IPC] Sending LLM health check request:`, {
+      profileId: payload.profileId,
+      adapterId: payload.config?.adapterId,
+      mode: payload.config?.mode,
+      model: payload.config?.model
+    })
+    
+    const reply = await this.request('llm.healthCheck', payload, { timeoutMs: 20_000 })
+    
+    console.log(`[UI Runtime IPC] Received LLM health check response:`, {
+      ok: (reply.payload as LLMHealthCheckPayload).ok,
+      models: (reply.payload as LLMHealthCheckPayload).models?.length || 0,
+      error: (reply.payload as LLMHealthCheckPayload).error?.message
+    })
+    
+    return reply.payload as LLMHealthCheckPayload
   }
 
   // CID:runtime-ipc-core-010

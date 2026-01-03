@@ -41,6 +41,7 @@ export function applyTaskPlanMessage(opts: {
       return {
         ...m,
         text: `I can do that. Here's the plan:`,
+        lane: 'task',
         plan: {
           goal: opts.plan.goal,
           collapsed: false,
@@ -55,6 +56,7 @@ export function applyTaskPlanMessage(opts: {
     type: 'acta',
     timestamp: opts.now,
     text: `I can do that. Here's the plan:`,
+    lane: 'task',
     plan: {
       goal: opts.plan.goal,
       collapsed: false,

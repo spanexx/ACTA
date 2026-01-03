@@ -25,6 +25,8 @@
 import type {
   ActaMessage,
   ActaMessageType,
+  LLMHealthCheckPayload,
+  LLMHealthCheckRequest,
   ProfileActivePayload,
   ProfileCreatePayload,
   ProfileCreateRequest,
@@ -44,6 +46,15 @@ import type {
 import type { AgentService } from '../../agent.service'
 import type { ProfileService } from '../../profile.service'
 
+import { handleLLMHealthCheck } from './profile-handlers/handle-llm-health-check'
+import { handleProfileActive } from './profile-handlers/handle-profile-active'
+import { handleProfileCreate } from './profile-handlers/handle-profile-create'
+import { handleProfileDelete } from './profile-handlers/handle-profile-delete'
+import { handleProfileGet } from './profile-handlers/handle-profile-get'
+import { handleProfileList } from './profile-handlers/handle-profile-list'
+import { handleProfileSwitch } from './profile-handlers/handle-profile-switch'
+import { handleProfileUpdate } from './profile-handlers/handle-profile-update'
+
 export type EmitMessage = <T>(
   type: ActaMessageType,
   payload: T,
@@ -58,6 +69,7 @@ export type ProfileHandlers = {
   handleProfileSwitch: (msg: ActaMessage<ProfileSwitchRequest>) => Promise<void>
   handleProfileGet: (msg: ActaMessage<ProfileGetRequest>) => Promise<void>
   handleProfileUpdate: (msg: ActaMessage<ProfileUpdateRequest>) => Promise<void>
+  handleLLMHealthCheck: (msg: ActaMessage<LLMHealthCheckRequest>) => Promise<void>
 }
 
 // CID:profile-handlers-001 - createProfileHandlers
@@ -72,162 +84,44 @@ export function createProfileHandlers(opts: {
   toSummary: (profile: { id: string; name: string }, activeId: string | null) => ProfileSummary
 }): ProfileHandlers {
   return {
-    // CID:profile-handlers-002 - handleProfileList
-    // Purpose: List all profiles with active status highlighted
-    // Uses: ProfileService list/getActiveProfileId, toSummary mapper
-    // Used by: Router for profile.list message type
-    handleProfileList: async (msg: ActaMessage): Promise<void> => {
-      const activeId = opts.profileService.getActiveProfileId()
-      const profiles = await opts.profileService.list()
-      const payload: ProfileListPayload = {
-        profiles: profiles.map(p => opts.toSummary(p, activeId)),
-      }
-      opts.emitMessage('profile.list', payload, {
-        source: 'system',
-        replyTo: msg.id,
-        correlationId: msg.correlationId,
-        profileId: activeId ?? undefined,
-      })
-    },
-
-    // CID:profile-handlers-003 - handleProfileActive
-    // Purpose: Return currently active profile or null if none
-    // Uses: ProfileService getActiveProfileId/getActiveProfile, toSummary mapper
-    // Used by: Router for profile.active message type
-    handleProfileActive: async (msg: ActaMessage): Promise<void> => {
-      const activeId = opts.profileService.getActiveProfileId()
-      const active = await opts.profileService.getActiveProfile()
-      const payload: ProfileActivePayload = {
-        profile: active ? opts.toSummary(active, activeId) : null,
-      }
-      opts.emitMessage('profile.active', payload, {
-        source: 'system',
-        replyTo: msg.id,
-        correlationId: msg.correlationId,
-        profileId: activeId ?? undefined,
-      })
-    },
-
-    // CID:profile-handlers-004 - handleProfileCreate
-    // Purpose: Create new profile with validation and return summary
-    // Uses: ProfileService create, toSummary mapper, input validation
-    // Used by: Router for profile.create message type
-    handleProfileCreate: async (msg: ActaMessage<ProfileCreateRequest>): Promise<void> => {
-      if (!msg.payload || typeof msg.payload.name !== 'string' || !msg.payload.name.trim()) {
-        throw new Error('Invalid profile.create payload (missing name)')
-      }
-
-      const created = await opts.profileService.create({
-        name: msg.payload.name,
-        profileId: msg.payload.profileId,
-      })
-      const activeId = opts.profileService.getActiveProfileId()
-      const payload: ProfileCreatePayload = {
-        profile: opts.toSummary(created, activeId),
-      }
-
-      opts.emitMessage('profile.create', payload, {
-        source: 'system',
-        replyTo: msg.id,
-        correlationId: msg.correlationId,
-        profileId: activeId ?? undefined,
-      })
-    },
-
-    // CID:profile-handlers-005 - handleProfileDelete
-    // Purpose: Delete profile with optional file deletion
-    // Uses: ProfileService delete, input validation
-    // Used by: Router for profile.delete message type
-    handleProfileDelete: async (msg: ActaMessage<ProfileDeleteRequest>): Promise<void> => {
-      if (!msg.payload || typeof msg.payload.profileId !== 'string') {
-        throw new Error('Invalid profile.delete payload (missing profileId)')
-      }
-
-      await opts.profileService.delete(msg.payload.profileId, { deleteFiles: msg.payload.deleteFiles })
-      const activeId = opts.profileService.getActiveProfileId()
-
-      const payload: ProfileDeletePayload = {
-        deleted: true,
-        profileId: msg.payload.profileId,
-      }
-
-      opts.emitMessage('profile.delete', payload, {
-        source: 'system',
-        replyTo: msg.id,
-        correlationId: msg.correlationId,
-        profileId: activeId ?? undefined,
-      })
-    },
-
-    // CID:profile-handlers-006 - handleProfileSwitch
-    // Purpose: Switch active profile with task execution safety check
-    // Uses: ProfileService switch, AgentService isRunning check, toSummary mapper
-    // Used by: Router for profile.switch message type
-    handleProfileSwitch: async (msg: ActaMessage<ProfileSwitchRequest>): Promise<void> => {
-      if (!msg.payload || typeof msg.payload.profileId !== 'string') {
-        throw new Error('Invalid profile.switch payload (missing profileId)')
-      }
-      if (opts.agentService.isRunning()) {
-        throw new Error('Profile switch blocked while a task is running')
-      }
-
-      const profile = await opts.profileService.switch(msg.payload.profileId)
-      const activeId = opts.profileService.getActiveProfileId()
-
-      const payload: ProfileSwitchPayload = {
-        profile: opts.toSummary(profile, activeId),
-      }
-
-      opts.emitMessage('profile.switch', payload, {
-        source: 'system',
-        replyTo: msg.id,
-        correlationId: msg.correlationId,
-        profileId: activeId ?? undefined,
-      })
-    },
-
-    // CID:profile-handlers-007 - handleProfileGet
-    // Purpose: Get detailed profile document with full configuration
-    // Uses: ProfileService getProfile, toDoc mapper
-    // Used by: Router for profile.get message type
-    handleProfileGet: async (msg: ActaMessage<ProfileGetRequest>): Promise<void> => {
-      const profile = await opts.profileService.getProfile(msg.payload?.profileId)
-      const activeId = opts.profileService.getActiveProfileId()
-
-      const payload: ProfileGetPayload = {
-        profile: opts.toDoc(profile),
-      }
-
-      opts.emitMessage('profile.get', payload, {
-        source: 'system',
-        replyTo: msg.id,
-        correlationId: msg.correlationId,
-        profileId: activeId ?? undefined,
-      })
-    },
-
-    // CID:profile-handlers-008 - handleProfileUpdate
-    // Purpose: Update profile configuration with validation
-    // Uses: ProfileService update, toDoc mapper, input validation
-    // Used by: Router for profile.update message type
-    handleProfileUpdate: async (msg: ActaMessage<ProfileUpdateRequest>): Promise<void> => {
-      if (!msg.payload || typeof msg.payload.profileId !== 'string' || !msg.payload.profileId.trim()) {
-        throw new Error('Invalid profile.update payload (missing profileId)')
-      }
-
-      const updated = await opts.profileService.update(msg.payload.profileId, msg.payload.patch as any)
-      const activeId = opts.profileService.getActiveProfileId()
-
-      const payload: ProfileUpdatePayload = {
-        profile: opts.toDoc(updated),
-      }
-
-      opts.emitMessage('profile.update', payload, {
-        source: 'system',
-        replyTo: msg.id,
-        correlationId: msg.correlationId,
-        profileId: activeId ?? undefined,
-      })
-    },
+    handleProfileList: handleProfileList({
+      profileService: opts.profileService,
+      emitMessage: opts.emitMessage,
+      toSummary: opts.toSummary,
+    }),
+    handleProfileActive: handleProfileActive({
+      profileService: opts.profileService,
+      emitMessage: opts.emitMessage,
+      toSummary: opts.toSummary,
+    }),
+    handleProfileCreate: handleProfileCreate({
+      profileService: opts.profileService,
+      emitMessage: opts.emitMessage,
+      toSummary: opts.toSummary,
+    }),
+    handleProfileDelete: handleProfileDelete({
+      profileService: opts.profileService,
+      emitMessage: opts.emitMessage,
+    }),
+    handleProfileSwitch: handleProfileSwitch({
+      profileService: opts.profileService,
+      agentService: opts.agentService,
+      emitMessage: opts.emitMessage,
+      toSummary: opts.toSummary,
+    }),
+    handleProfileGet: handleProfileGet({
+      profileService: opts.profileService,
+      emitMessage: opts.emitMessage,
+      toDoc: opts.toDoc,
+    }),
+    handleProfileUpdate: handleProfileUpdate({
+      profileService: opts.profileService,
+      emitMessage: opts.emitMessage,
+      toDoc: opts.toDoc,
+    }),
+    handleLLMHealthCheck: handleLLMHealthCheck({
+      profileService: opts.profileService,
+      emitMessage: opts.emitMessage,
+    }),
   }
 }

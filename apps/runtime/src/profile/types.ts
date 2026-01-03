@@ -30,6 +30,8 @@ export type ProfileUpdatePatch = {
     model?: string
     baseUrl?: string
     endpoint?: string
+    apiKey?: string
+    headers?: Record<string, string>
     cloudWarnBeforeSending?: boolean
     defaults?: ProfileLLMRequestDefaults
   }

@@ -53,7 +53,14 @@ function isValidTrustLevel(level: unknown): level is TrustLevel {
 }
 
 function isValidLlmProviderId(value: unknown): value is LLMProviderId {
-  return value === 'ollama' || value === 'lmstudio' || value === 'openai' || value === 'anthropic' || value === 'gemini'
+  return (
+    value === 'ollama' ||
+    value === 'lmstudio' ||
+    value === 'openai' ||
+    value === 'anthropic' ||
+    value === 'gemini' ||
+    value === 'custom'
+  )
 }
 
 function validateLlmDefaults(value: unknown, errors: string[]): void {
@@ -165,6 +172,24 @@ export function validateProfile(input: unknown): ValidationResult {
     if (llm.endpoint !== undefined && typeof llm.endpoint !== 'string') {
       errors.push('llm.endpoint must be a string')
     }
+    if (llm.apiKey !== undefined && typeof llm.apiKey !== 'string') {
+      errors.push('llm.apiKey must be a string')
+    }
+    if (llm.headers !== undefined) {
+      if (!isPlainObject(llm.headers)) {
+        errors.push('llm.headers must be an object')
+      } else {
+        for (const [k, v] of Object.entries(llm.headers as Record<string, unknown>)) {
+          if (typeof k !== 'string' || !k.trim()) {
+            errors.push('llm.headers contains an invalid header name')
+            continue
+          }
+          if (typeof v !== 'string') {
+            errors.push(`llm.headers.${k} must be a string`)
+          }
+        }
+      }
+    }
     if (llm.cloudWarnBeforeSending !== undefined && typeof llm.cloudWarnBeforeSending !== 'boolean') {
       errors.push('llm.cloudWarnBeforeSending must be a boolean')
     }
@@ -176,6 +201,24 @@ export function validateProfile(input: unknown): ValidationResult {
       const hasEndpoint = typeof llm.endpoint === 'string' && llm.endpoint.trim().length > 0
       if (!hasBaseUrl && !hasEndpoint) {
         errors.push('llm.baseUrl (or endpoint) is required for local providers')
+      }
+    }
+
+    if (llm.adapterId === 'custom') {
+      const hasBaseUrl = typeof llm.baseUrl === 'string' && llm.baseUrl.trim().length > 0
+      const hasEndpoint = typeof llm.endpoint === 'string' && llm.endpoint.trim().length > 0
+      if (!hasBaseUrl && !hasEndpoint) {
+        errors.push('llm.baseUrl (or endpoint) is required for custom provider')
+      }
+    }
+
+    if (llm.mode === 'cloud') {
+      const needsKey = llm.adapterId === 'openai' || llm.adapterId === 'anthropic' || llm.adapterId === 'gemini'
+      if (needsKey) {
+        const hasKey = typeof llm.apiKey === 'string' && llm.apiKey.trim().length > 0
+        if (!hasKey && obj.setupComplete === true) {
+          errors.push('llm.apiKey is required for cloud providers when setupComplete=true')
+        }
       }
     }
   }

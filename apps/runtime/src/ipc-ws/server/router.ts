@@ -11,8 +11,10 @@
 import { createLogger } from '@acta/logging'
 import type {
   ActaMessage,
+  ChatRequest,
   TaskRequest,
   TaskStopRequest,
+  LLMHealthCheckRequest,
   ProfileCreateRequest,
   ProfileDeleteRequest,
   ProfileSwitchRequest,
@@ -38,7 +40,12 @@ export function createRuntimeIpcRouter(opts: {
     const logger = createLogger('ipc-ws', opts.getLogLevel())
     switch (msg.type) {
       case 'task.request':
+        logger.info('IPC received task.request', { correlationId: msg.correlationId, profileId: msg.profileId })
         await opts.taskHandlers.handleTaskRequest(msg as ActaMessage<TaskRequest>)
+        return
+      case 'chat.request':
+        logger.info('IPC received chat.request', { correlationId: msg.correlationId, profileId: msg.profileId })
+        await opts.taskHandlers.handleChatRequest(msg as ActaMessage<ChatRequest>)
         return
       case 'task.stop':
         await opts.taskHandlers.handleTaskStop(msg as ActaMessage<TaskStopRequest>)
@@ -66,6 +73,9 @@ export function createRuntimeIpcRouter(opts: {
         return
       case 'profile.update':
         await opts.profileHandlers.handleProfileUpdate(msg as ActaMessage<ProfileUpdateRequest>)
+        return
+      case 'llm.healthCheck':
+        await opts.profileHandlers.handleLLMHealthCheck(msg as ActaMessage<LLMHealthCheckRequest>)
         return
       default:
         logger.warn('IPC received unsupported message type', { type: msg.type })

@@ -161,6 +161,10 @@ export function createDemoExplainTool(): ActaTool {
         return { success: false, error: 'No text provided' }
       }
 
+      if (input.text.includes('test:tool-fail')) {
+        return { success: false, error: 'Tool failed as requested by test' }
+      }
+
       if (input.text.includes('SLOW')) {
         await new Promise<void>(resolve => setTimeout(resolve, 250))
       }

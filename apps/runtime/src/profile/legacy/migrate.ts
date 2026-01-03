@@ -72,7 +72,8 @@ export async function maybeMigrateLegacyProfiles(state: ProfileServiceState): Pr
       adapterIdRaw === 'lmstudio' ||
       adapterIdRaw === 'openai' ||
       adapterIdRaw === 'anthropic' ||
-      adapterIdRaw === 'gemini'
+      adapterIdRaw === 'gemini' ||
+      adapterIdRaw === 'custom'
         ? adapterIdRaw
         : 'ollama'
     const mode: 'local' | 'cloud' =

@@ -48,6 +48,16 @@ export class RuntimeEventsService {
           return
         }
 
+        if (msg.type === 'chat.response') {
+          this.chat.handleChatResponseMessage(msg)
+          return
+        }
+
+        if (msg.type === 'chat.error') {
+          this.chat.handleChatErrorMessage(msg)
+          return
+        }
+
         if (msg.type === 'task.plan') {
           this.chat.handleTaskPlanMessage(msg)
           return

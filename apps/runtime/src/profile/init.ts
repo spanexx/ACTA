@@ -45,8 +45,17 @@ export async function initProfileService(state: ProfileServiceState): Promise<vo
 
     const existing = await state.store.list()
     if (existing.length) {
-      const match = legacyActiveId ? existing.find(p => p.id === legacyActiveId) : undefined
-      state.activeProfileId = match?.id ?? existing[0].id
+      if (legacyActiveId) {
+        try {
+          await state.store.read(legacyActiveId)
+          state.activeProfileId = legacyActiveId
+          await writeActivePointer(state.profileRoot, state.activeProfileId)
+          return
+        } catch {
+        }
+      }
+
+      state.activeProfileId = existing[0].id
       await writeActivePointer(state.profileRoot, state.activeProfileId)
       return
     }

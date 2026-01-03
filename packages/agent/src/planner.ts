@@ -60,6 +60,77 @@ export class Planner {
   private blockedTools: Set<string>
   private blockedScopes: Set<string>
 
+  private extractFirstJsonObject(text: string): string | null {
+    const cleaned = text.replace(/```(?:json)?\s*([\s\S]*?)\s*```/gi, (_m, inner) => String(inner ?? ''))
+
+    const s = cleaned
+    let start = -1
+    let depth = 0
+    let inString = false
+    let escaped = false
+
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i]
+
+      if (escaped) {
+        escaped = false
+        continue
+      }
+
+      if (inString) {
+        if (ch === '\\') {
+          escaped = true
+          continue
+        }
+        if (ch === '"') {
+          inString = false
+        }
+        continue
+      }
+
+      if (ch === '"') {
+        inString = true
+        continue
+      }
+
+      if (ch === '{') {
+        if (depth === 0) start = i
+        depth++
+        continue
+      }
+
+      if (ch === '}') {
+        if (depth > 0) depth--
+        if (depth === 0 && start >= 0) {
+          return s.slice(start, i + 1)
+        }
+      }
+    }
+
+    return null
+  }
+
+  private safeSnippet(text: string, max = 900): string {
+    return text.replace(/\s+/g, ' ').trim().slice(0, max)
+  }
+
+  private normalizePlanInputs(plan: AgentPlan, userInput: string): AgentPlan {
+    for (const step of plan.steps ?? []) {
+      if (!step || typeof step !== 'object') continue
+      if (!step.input || typeof step.input !== 'object' || Array.isArray(step.input)) {
+        step.input = {}
+      }
+
+      if (step.tool === 'explain.content') {
+        const text = (step.input as any).text
+        if (typeof text !== 'string' || !text.trim().length) {
+          ;(step.input as any).text = userInput
+        }
+      }
+    }
+    return plan
+  }
+
   constructor(llm: LLMRouter, options?: PlannerOptions) {
     this.llm = llm
     this.blockedTools = new Set(options?.blockedTools ?? [])
@@ -74,6 +145,7 @@ Return JSON with this schema:
     { "id": "step-1", "tool": "tool_id", "intent": "what this step does", "input": {}, "requiresPermission": true/false }
   ]
 }
+Return ONLY valid JSON. Do not wrap in markdown or add any extra text.
 Only use known tool IDs.
 Never use shell/system tools or any tool that looks like it can run arbitrary commands.`
   }
@@ -119,7 +191,7 @@ Never use shell/system tools or any tool that looks like it can run arbitrary co
 
     const response: LLMResponse = await this.llm.generate(llmRequest)
 
-    const plan = this.parsePlan(response.text)
+    const plan = this.normalizePlanInputs(this.parsePlan(response.text), input)
     this.validatePlan(plan, toolIds)
     return plan
   }
@@ -128,19 +200,41 @@ Never use shell/system tools or any tool that looks like it can run arbitrary co
   // Purpose: Extract JSON plan block from LLM response text
   // Uses: Regex for ```json code fences
   private parsePlan(text: string): AgentPlan {
-    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('Failed to extract JSON plan from LLM response')
+    const fenced = text.match(/```json\s*([\s\S]*?)\s*```/i) || text.match(/```\s*([\s\S]*?)\s*```/i)
+    const primary = (fenced?.[1] ?? text).trim()
+
+    const candidates: string[] = []
+    if (primary.length) candidates.push(primary)
+
+    const extracted = this.extractFirstJsonObject(text)
+    if (extracted) candidates.push(extracted)
+
+    let lastErr: unknown
+    for (const c of candidates) {
+      const jsonStr = c.trim()
+      if (!jsonStr.startsWith('{') || !jsonStr.endsWith('}')) {
+        continue
+      }
+
+      try {
+        const parsed = JSON.parse(jsonStr)
+
+        if (!parsed.goal || !Array.isArray(parsed.steps)) {
+          lastErr = new Error('Invalid plan structure: missing goal or steps')
+          continue
+        }
+
+        return parsed as AgentPlan
+      } catch (err) {
+        lastErr = err
+      }
     }
 
-    const jsonStr = jsonMatch[1] || jsonMatch[0]
-    const parsed = JSON.parse(jsonStr)
+    console.warn('[Planner] Failed to parse plan JSON', {
+      snippet: this.safeSnippet(text),
+    })
 
-    if (!parsed.goal || !Array.isArray(parsed.steps)) {
-      throw new Error('Invalid plan structure: missing goal or steps')
-    }
-
-    return parsed as AgentPlan
+    throw (lastErr instanceof Error ? lastErr : new Error('Failed to extract JSON plan from LLM response'))
   }
 
   // CID:planner-007 - validatePlan
@@ -185,6 +279,13 @@ Never use shell/system tools or any tool that looks like it can run arbitrary co
 
       if (!step.input || typeof step.input !== 'object' || Array.isArray(step.input)) {
         throw new Error(`Step ${step.id} must include an input object`)
+      }
+
+      if (step.tool === 'explain.content') {
+        const text = (step.input as any)?.text
+        if (typeof text !== 'string' || !text.trim().length) {
+          throw new Error(`Step ${step.id} explain.content requires input.text`)
+        }
       }
 
       if (typeof step.requiresPermission !== 'boolean') {

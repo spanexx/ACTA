@@ -23,6 +23,9 @@
                     If you proceed, content may be sent to:
                     <span class="mono">{{ permission.cloudLabel(permission.request) }}</span>
                 </div>
+                <div class="permission-modal__cloudText" *ngIf="permission.request.cloud.warning">
+                    <span class="mono">{{ permission.request.cloud.warning }}</span>
+                </div>
             </div>
 
             <div class="permission-modal__kv">

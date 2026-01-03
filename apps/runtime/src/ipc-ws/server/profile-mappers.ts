@@ -32,6 +32,10 @@ export function toDoc(profile: any): ProfileDoc {
       model: String(profile.llm?.model ?? 'llama3:8b'),
       baseUrl: typeof profile.llm?.baseUrl === 'string' ? profile.llm.baseUrl : undefined,
       endpoint: typeof profile.llm?.endpoint === 'string' ? profile.llm.endpoint : undefined,
+      headers:
+        profile.llm?.headers && typeof profile.llm.headers === 'object' && !Array.isArray(profile.llm.headers)
+          ? (profile.llm.headers as Record<string, string>)
+          : undefined,
       cloudWarnBeforeSending:
         typeof profile.llm?.cloudWarnBeforeSending === 'boolean' ? profile.llm.cloudWarnBeforeSending : undefined,
       defaults:

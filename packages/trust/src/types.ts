@@ -56,6 +56,11 @@ export interface PermissionRequest {
   profileId: string
   userId?: string
   context?: unknown
+  cloud?: {
+    provider: string
+    model?: string
+    warning?: string
+  }
 }
 
 export type PermissionDecisionType = 'deny' | 'ask' | 'allow'

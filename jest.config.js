@@ -1,6 +1,6 @@
 // Root Jest config for ACTA monorepo (Phase-1 baseline)
 // Configures Jest for TypeScript with coverage and workspace-aware test discovery.
-module.exports = {
+export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/packages/', '<rootDir>/apps/'],
@@ -19,4 +19,4 @@ module.exports = {
       statements: 80,
     },
   },
-};
+}

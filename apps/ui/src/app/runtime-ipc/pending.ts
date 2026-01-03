@@ -20,7 +20,14 @@ import type { ActaMessage } from '@acta/ipc'
  * Used by: RuntimeIpcCore for request/response orchestration
  */
 export class PendingRequests {
-  private pending = new Map<string, (msg: ActaMessage) => void>()
+  private pending = new Map<
+    string,
+    {
+      resolve: (msg: ActaMessage) => void
+      reject: (err: Error) => void
+      timeout: ReturnType<typeof setTimeout>
+    }
+  >()
 
   /**
    * CID:pending-002 - resolveIfPending Method
@@ -32,11 +39,12 @@ export class PendingRequests {
     const replyTo = typeof (msg as any).replyTo === 'string' ? String((msg as any).replyTo) : ''
     if (!replyTo.length) return false
 
-    const resolver = this.pending.get(replyTo)
-    if (!resolver) return false
+    const pending = this.pending.get(replyTo)
+    if (!pending) return false
 
     this.pending.delete(replyTo)
-    resolver(msg)
+    clearTimeout(pending.timeout)
+    pending.resolve(msg)
     return true
   }
 
@@ -53,11 +61,36 @@ export class PendingRequests {
         reject(new Error('Runtime IPC request timeout'))
       }, timeoutMs)
 
-      this.pending.set(id, reply => {
-        clearTimeout(timeout)
-        resolve(reply)
+      this.pending.set(id, {
+        resolve: reply => {
+          clearTimeout(timeout)
+          resolve(reply)
+        },
+        reject: err => {
+          clearTimeout(timeout)
+          reject(err)
+        },
+        timeout,
       })
     })
+  }
+
+  cancelAll(err: Error): void {
+    const entries = Array.from(this.pending.entries())
+    this.pending.clear()
+
+    for (const [, pending] of entries) {
+      clearTimeout(pending.timeout)
+      pending.reject(err)
+    }
+  }
+
+  cancel(id: string, err: Error): void {
+    const pending = this.pending.get(id)
+    if (!pending) return
+    this.pending.delete(id)
+    clearTimeout(pending.timeout)
+    pending.reject(err)
   }
 
   /**
@@ -67,6 +100,6 @@ export class PendingRequests {
    * Used by: RuntimeIpcCore.disconnect() for cleanup
    */
   clear(): void {
-    this.pending.clear()
+    this.cancelAll(new Error('Runtime IPC disconnected'))
   }
 }

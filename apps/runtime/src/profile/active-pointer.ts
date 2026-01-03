@@ -35,8 +35,38 @@ export async function withActiveLock<T>(profileRoot: string, fn: () => Promise<T
   await fs.mkdir(root, { recursive: true })
 
   const lockFile = path.join(root, '.lock-activeProfile')
-  const handle = await fs.open(lockFile, 'wx')
 
+  const maxAttempts = 30
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const handle = await fs.open(lockFile, 'wx')
+      try {
+        return await fn()
+      } finally {
+        await handle.close().catch(() => undefined)
+        await fs.unlink(lockFile).catch(() => undefined)
+      }
+    } catch (err: any) {
+      if (err && err.code === 'EEXIST') {
+        try {
+          const st = await fs.stat(lockFile)
+          const ageMs = Date.now() - st.mtimeMs
+          if (ageMs > 5_000) {
+            await fs.unlink(lockFile).catch(() => undefined)
+            continue
+          }
+        } catch {
+          // ignore
+        }
+        await new Promise(resolve => setTimeout(resolve, 100 + attempt * 50))
+        continue
+      }
+      throw err
+    }
+  }
+
+  await fs.unlink(lockFile).catch(() => undefined)
+  const handle = await fs.open(lockFile, 'wx')
   try {
     return await fn()
   } finally {

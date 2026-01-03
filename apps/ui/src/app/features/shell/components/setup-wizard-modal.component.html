@@ -20,9 +20,10 @@
                 <div class="permission-modal__row">
                     <div class="permission-modal__label">Provider</div>
                     <div class="permission-modal__value">
-                        <select class="topbar__select" name="setupProvider" [(ngModel)]="setup.config.modelProvider" [disabled]="setup.busy">
+                        <select class="topbar__select" name="setupProvider" [(ngModel)]="setup.config.modelProvider" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy">
                             <option value="ollama">Ollama (local)</option>
                             <option value="lmstudio">LM Studio (local)</option>
+                            <option value="custom">Custom AI (local)</option>
                             <option value="openai">OpenAI (cloud)</option>
                             <option value="anthropic">Anthropic (cloud)</option>
                             <option value="gemini">Gemini (cloud)</option>
@@ -37,13 +38,13 @@
                     <div class="permission-modal__row">
                         <div class="permission-modal__label">URL</div>
                         <div class="permission-modal__value">
-                            <input class="tool-panel__search" type="text" name="setupEndpoint" [(ngModel)]="setup.config.endpoint" [disabled]="setup.busy"
+                            <input class="tool-panel__search" type="text" name="setupEndpoint" [(ngModel)]="setup.config.endpoint" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
                                 placeholder="http://localhost:11434" />
                         </div>
                     </div>
                 </div>
                 <div class="permission-modal__value">
-                    <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="setup.testOllamaEndpoint()"
+                    <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="setup.testConnection()"
                         [disabled]="setup.busy || !(setup.config.endpoint ?? '').trim()">
                         Test endpoint
                     </button>
@@ -55,7 +56,7 @@
                     <div class="permission-modal__row">
                         <div class="permission-modal__label">Name</div>
                         <div class="permission-modal__value">
-                            <select class="topbar__select" name="setupModel" [(ngModel)]="setup.config.model" [disabled]="setup.busy">
+                            <select class="topbar__select" name="setupModel" [(ngModel)]="setup.config.model" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy">
                                 <option *ngFor="let m of setup.ollamaModels; trackBy: trackByString" [value]="m">
                                     {{ m }}
                                 </option>
@@ -65,10 +66,134 @@
                 </div>
             </ng-container>
 
+            <ng-container *ngIf="setup.config.modelProvider === 'custom'">
+                <div class="permission-modal__sectionTitle">Custom AI base URL</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">URL</div>
+                        <div class="permission-modal__value">
+                            <input class="tool-panel__search" type="text" name="setupCustomEndpoint" [(ngModel)]="setup.config.endpoint" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
+                                placeholder="http://localhost:8080" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="permission-modal__sectionTitle">Model</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">Name</div>
+                        <div class="permission-modal__value">
+                            <input class="tool-panel__search" type="text" name="setupCustomModel" [(ngModel)]="setup.config.model" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
+                                placeholder="(optional)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="permission-modal__sectionTitle">Headers (JSON)</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">Headers</div>
+                        <div class="permission-modal__value">
+                            <textarea class="tool-panel__search" name="setupCustomHeaders" [(ngModel)]="setup.config.headers" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
+                                placeholder='{"Authorization":"Bearer ..."}' rows="4"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="permission-modal__value">
+                    <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="setup.testConnection()"
+                        [disabled]="setup.busy || !(setup.config.endpoint ?? '').trim()">
+                        Test connection
+                    </button>
+                    <span class="topbar__meta" *ngIf="setup.testStatus">{{ setup.testStatus }}</span>
+                </div>
+            </ng-container>
+
+            <ng-container *ngIf="setup.config.modelProvider === 'lmstudio'">
+                <div class="permission-modal__sectionTitle">LM Studio base URL</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">URL</div>
+                        <div class="permission-modal__value">
+                            <input class="tool-panel__search" type="text" name="setupLmstudioEndpoint" [(ngModel)]="setup.config.endpoint" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
+                                placeholder="http://localhost:1234" />
+                        </div>
+                    </div>
+                </div>
+                <div class="permission-modal__value">
+                    <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="setup.testConnection()"
+                        [disabled]="setup.busy || !(setup.config.endpoint ?? '').trim()">
+                        Test connection
+                    </button>
+                    <span class="topbar__meta" *ngIf="setup.testStatus">{{ setup.testStatus }}</span>
+                </div>
+
+                <div class="permission-modal__sectionTitle">Model</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">Name</div>
+                        <div class="permission-modal__value">
+                            <input class="tool-panel__search" type="text" name="setupLmstudioModel" [(ngModel)]="setup.config.model" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
+                                placeholder="gpt-4o-mini" />
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+
             <ng-container *ngIf="setup.config.modelProvider === 'openai' || setup.config.modelProvider === 'anthropic' || setup.config.modelProvider === 'gemini'">
+                <div class="permission-modal__cloud">
+                    <div class="permission-modal__cloudTitle">Cloud provider selected</div>
+                    <div class="permission-modal__cloudText">
+                        Running tasks with this provider may send prompts, file snippets, and other context to:
+                        <span class="mono">{{ setup.config.modelProvider }}</span>
+                    </div>
+                    <div class="permission-modal__cloudText">
+                        You will be prompted for permission before cloud requests (unless explicitly trusted).
+                    </div>
+                </div>
+
+                <div class="permission-modal__sectionTitle">Cloud API key</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">Key</div>
+                        <div class="permission-modal__value">
+                            <input class="tool-panel__search" type="password" name="setupCloudApiKey" [(ngModel)]="setup.config.apiKey" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
+                                placeholder="(stored locally in profile)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="permission-modal__sectionTitle">Model</div>
+                <div class="permission-modal__kv">
+                    <div class="permission-modal__row">
+                        <div class="permission-modal__label">Name</div>
+                        <div class="permission-modal__value">
+                            <ng-container *ngIf="setup.cloudModels.length; else cloudModelText">
+                                <select class="topbar__select" name="setupCloudModel" [(ngModel)]="setup.config.model" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy">
+                                    <option *ngFor="let m of setup.cloudModels; trackBy: trackByString" [value]="m">
+                                        {{ m }}
+                                    </option>
+                                </select>
+                            </ng-container>
+                            <ng-template #cloudModelText>
+                                <input class="tool-panel__search" type="text" name="setupCloudModel" [(ngModel)]="setup.config.model" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy"
+                                    placeholder="(e.g. gpt-4o-mini)" />
+                            </ng-template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="permission-modal__value">
+                    <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="setup.testConnection()"
+                        [disabled]="setup.busy || !(setup.config.apiKey ?? '').trim()">
+                        Test connection
+                    </button>
+                    <span class="topbar__meta" *ngIf="setup.testStatus">{{ setup.testStatus }}</span>
+                </div>
+
                 <div class="permission-modal__sectionTitle">Cloud warning</div>
                 <label class="permission-modal__remember">
-                    <input type="checkbox" name="cloudWarnBeforeSending" [(ngModel)]="setup.config.cloudWarnBeforeSending" [disabled]="setup.busy" />
+                    <input type="checkbox" name="cloudWarnBeforeSending" [(ngModel)]="setup.config.cloudWarnBeforeSending" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy" />
                     <span>Warn before sending content to cloud provider</span>
                 </label>
             </ng-container>
@@ -78,7 +203,7 @@
                 <div class="permission-modal__row">
                     <div class="permission-modal__label">Trust</div>
                     <div class="permission-modal__value">
-                        <select class="topbar__select" name="setupTrust" [(ngModel)]="setup.config.trustLevel" [disabled]="setup.busy">
+                        <select class="topbar__select" name="setupTrust" [(ngModel)]="setup.config.trustLevel" (ngModelChange)="setup.persistDraft()" [disabled]="setup.busy">
                             <option [ngValue]="0">Deny (0)</option>
                             <option [ngValue]="1">Ask every time (1)</option>
                             <option [ngValue]="2">Ask once (2)</option>

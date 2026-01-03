@@ -8,18 +8,19 @@
  * Quick lookup: rg -n "CID:run-task-" /home/spanexx/Shared/Projects/ACTA/apps/runtime/src/ipc-ws/task/run-task-request.ts
  */
 
-import { ActaAgent, ExecutionOrchestrator, Planner, SafetyGate } from '@acta/agent'
 import { createLogger } from '@acta/logging'
-import { LLMRouter } from '@acta/llm'
-import { createMemoryStore } from '@acta/memory'
 import { createDefaultRegistry } from '@acta/tools'
 import type { RuntimeTask } from '@acta/ipc'
-import type { PermissionDecisionType, PermissionRequest, TrustProfile } from '@acta/trust'
+import type { PermissionDecisionType, PermissionRequest } from '@acta/trust'
 
-import { RuntimeMockLLMAdapter } from '../mock-llm.adapter'
-import { buildPlannerInput } from './context'
+import type { Profile } from '@acta/profiles'
+
+import { createTaskAgent } from './agent-factory'
+import { createTaskLLMRouter } from './llm-router'
+import { createPlanningLLM } from './planning-llm'
+import { buildTrustProfile } from './trust-profile'
 import { createTrustEvaluator } from './trust'
-import { persistTranscriptOnError, persistTranscriptOnResult } from './transcript'
+import { persistTranscriptOnError } from './transcript'
 
 // CID:run-task-001 - runTaskRequest
 // Purpose: Execute a complete task workflow with agent, tools, memory, and trust
@@ -31,6 +32,7 @@ export async function runTaskRequest(opts: {
   logsDir?: string
   memoryDir?: string
   trustDir?: string
+  profileService: { getProfile: (profileId?: string) => Promise<Profile> }
   emitEvent: (type: string, payload: any) => void
   waitForPermission: (request: PermissionRequest) => Promise<PermissionDecisionType>
   isCancelled?: () => boolean
@@ -40,15 +42,11 @@ export async function runTaskRequest(opts: {
   const tools = await createDefaultRegistry()
   const toolList = await tools.list()
 
-  const llmRouter = new LLMRouter()
-  llmRouter.register(new RuntimeMockLLMAdapter())
+  const profileDoc = await opts.profileService.getProfile(opts.task.profileId)
 
-  const planner = new Planner(llmRouter)
-  const safetyGate = new SafetyGate({ blockedTools: [], blockedScopes: [] })
+  const profile = buildTrustProfile(opts.task, profileDoc)
 
-  const profile: TrustProfile = { profileId: opts.task.profileId, defaultTrustLevel: 2 }
-
-  const memoryEntries = opts.memoryDir ? await createMemoryStore({ dir: opts.memoryDir }).list() : undefined
+  const llmRouter = createTaskLLMRouter(profileDoc)
 
   const evaluatePermission = await createTrustEvaluator({
     task: { correlationId: opts.task.correlationId, profileId: opts.task.profileId },
@@ -58,32 +56,29 @@ export async function runTaskRequest(opts: {
     profile,
   })
 
-  const orchestrator = new ExecutionOrchestrator(tools as any, profile, {
-    profileId: opts.task.profileId,
-    taskId: opts.task.taskId,
+  const planningLLM = createPlanningLLM({
+    llmRouter,
+    profileDoc,
+    task: { taskId: opts.task.taskId, correlationId: opts.task.correlationId, profileId: opts.task.profileId },
     logger,
+    profile,
+    emitEvent: opts.emitEvent,
+    waitForPermission: opts.waitForPermission,
+    evaluatePermission,
+  })
+
+  const agent = await createTaskAgent({
+    task: opts.task,
+    profile,
+    logger,
+    tools,
+    toolList,
+    planningLLM,
+    memoryDir: opts.memoryDir,
     emitEvent: opts.emitEvent,
     isCancelled: opts.isCancelled,
     evaluatePermission,
     waitForPermission: opts.waitForPermission,
-  })
-
-  const agent = new ActaAgent({
-    planner,
-    safetyGate,
-    orchestrator,
-    availableTools: toolList.map(t => t.id),
-    emitEvent: opts.emitEvent,
-    buildPlannerInput: task =>
-      buildPlannerInput({
-        task,
-        toolList: toolList.map(t => ({ id: t.id, description: t.description })),
-        memoryEntries: memoryEntries?.map(e => ({ key: e.key, value: e.value, timestamp: e.timestamp })),
-        profile,
-      }),
-    onResult: async ({ task, result }) => {
-      await persistTranscriptOnResult({ memoryDir: opts.memoryDir, task, result })
-    },
   })
 
   try {

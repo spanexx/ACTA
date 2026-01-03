@@ -11,7 +11,7 @@
  * Quick lookup: grep -n "CID:outgoing-" /home/spanexx/Shared/Projects/ACTA/apps/ui/src/app/runtime-ipc/outgoing.ts
  */
 
-import type { ActaMessage, ActaMessageType, TaskRequest, TaskStopRequest } from '@acta/ipc'
+import type { ActaMessage, ActaMessageType, ChatRequest, TaskRequest, TaskStopRequest } from '@acta/ipc'
 
 /**
  * CID:outgoing-001 - buildTaskRequestMessage Function
@@ -28,6 +28,23 @@ export function buildTaskRequestMessage(opts: {
   return {
     id: opts.id,
     type: 'task.request',
+    source: 'ui',
+    timestamp: Date.now(),
+    payload: opts.payload,
+    correlationId: opts.correlationId,
+    profileId: opts.profileId,
+  }
+}
+
+export function buildChatRequestMessage(opts: {
+  id: string
+  correlationId: string
+  payload: ChatRequest
+  profileId?: string
+}): ActaMessage<ChatRequest> {
+  return {
+    id: opts.id,
+    type: 'chat.request',
     source: 'ui',
     timestamp: Date.now(),
     payload: opts.payload,

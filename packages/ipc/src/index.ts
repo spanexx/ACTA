@@ -22,6 +22,9 @@ export const IPC_VERSION = "0.1.0"
 export type {
   ActaMessage,
   ActaMessageType,
+  ChatError,
+  ChatRequest,
+  ChatResponse,
   TaskRequest,
   TaskStopRequest,
   RuntimeTask,
@@ -34,6 +37,8 @@ export type {
   TaskErrorPayload,
   PermissionRequestPayload,
   PermissionResponsePayload,
+  LLMHealthCheckRequest,
+  LLMHealthCheckPayload,
   ProfileSummary,
   ProfileListPayload,
   ProfileCreateRequest,

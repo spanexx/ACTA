@@ -29,7 +29,7 @@ export type TrustLevel = 0 | 1 | 2 | 3 | 4
 
 export type LLMProviderMode = 'local' | 'cloud'
 
-export type LLMProviderId = 'ollama' | 'lmstudio' | 'openai' | 'anthropic' | 'gemini'
+export type LLMProviderId = 'ollama' | 'lmstudio' | 'openai' | 'anthropic' | 'gemini' | 'custom'
 
 // CID:profile-types-003 - Profile Configuration Interfaces
 // Purpose: Defines structured shape for trust defaults, LLM configuration, paths, and the Profile object.
@@ -52,6 +52,8 @@ export interface ProfileLLMConfig {
   model: string
   baseUrl?: string
   endpoint?: string
+  apiKey?: string
+  headers?: Record<string, string>
   cloudWarnBeforeSending?: boolean
   defaults?: ProfileLLMRequestDefaults
 }

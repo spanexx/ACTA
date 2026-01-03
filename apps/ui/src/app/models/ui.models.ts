@@ -6,7 +6,7 @@ export type PermissionDecision = 'deny' | 'allow_once' | 'allow_always'
 
 export type TrustLevel = 0 | 1 | 2 | 3
 
-export type ModelProvider = 'ollama' | 'lmstudio' | 'openai' | 'anthropic' | 'gemini'
+export type ModelProvider = 'ollama' | 'lmstudio' | 'openai' | 'anthropic' | 'gemini' | 'custom'
 
 export type ProfileInfo = {
   id: string
@@ -20,6 +20,8 @@ export type ProfileSetupConfig = {
   modelProvider?: ModelProvider
   model?: string
   endpoint?: string
+  apiKey?: string
+  headers?: string
   cloudWarnBeforeSending?: boolean
   trustLevel?: TrustLevel
 }
@@ -43,6 +45,7 @@ export type PermissionRequestEvent = {
   cloud?: {
     provider: string
     model?: string
+    warning?: string
   }
 }
 
@@ -87,6 +90,8 @@ declare global {
 
 export type ChatMessageType = 'user' | 'acta' | 'system'
 
+export type ChatMessageLane = 'task' | 'chat'
+
 export type PlanStepStatus = 'pending' | 'in-progress' | 'completed' | 'failed'
 
 export type ChatPlanStep = {
@@ -113,6 +118,7 @@ export type ChatMessage = {
   type: ChatMessageType
   timestamp: number
   text: string
+  lane?: ChatMessageLane
   attachments?: Attachment[]
   plan?: ChatPlanBlock
 }

@@ -12,6 +12,7 @@
   "dependencies": {
     "@acta/core": "0.1.0",
     "@acta/ipc": "0.1.0",
+    "@acta/llm": "0.1.0",
     "@acta/logging": "0.1.0",
     "@acta/memory": "0.1.0",
     "@acta/profiles": "0.1.0",

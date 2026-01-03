@@ -27,6 +27,15 @@ export function permissionRequestFromRuntime(
   if (!correlationId) return null
 
   const p = msg.payload as any
+  const cloud =
+    p?.cloud && typeof p.cloud === 'object'
+      ? {
+          provider: String((p.cloud as any).provider ?? ''),
+          model: typeof (p.cloud as any).model === 'string' ? ((p.cloud as any).model as string) : undefined,
+          warning: typeof (p.cloud as any).warning === 'string' ? ((p.cloud as any).warning as string) : undefined,
+        }
+      : undefined
+
   const req: PermissionRequestEvent = {
     id: msg.id,
     requestId: typeof p?.id === 'string' ? p.id : msg.id,
@@ -42,6 +51,7 @@ export function permissionRequestFromRuntime(
     risks: Array.isArray(p?.risks) ? p.risks.map((r: any) => String(r)) : undefined,
     reversible: Boolean(p?.reversible ?? true),
     rememberDecision: true,
+    cloud: cloud && cloud.provider.trim().length ? cloud : undefined,
   }
 
   return { req, now }
