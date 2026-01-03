@@ -94,6 +94,7 @@ export function createRuntimeWsTransport(opts: {
         opts.onHandlerError(
           ws,
           {
+            taskId: typeof parsed.msg?.id === 'string' ? parsed.msg.id : 'unknown',
             code: 'ipc.handler_error',
             message: err instanceof Error ? err.message : String(err),
           },

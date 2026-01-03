@@ -136,6 +136,10 @@ export function createDemoExplainTool(): ActaTool {
       if (!input || typeof input.text !== 'string' || input.text.length === 0) {
         return { success: false, error: 'No text provided' }
       }
+
+      if (input.text.includes('SLOW')) {
+        await new Promise<void>(resolve => setTimeout(resolve, 250))
+      }
       // Phase-1 stub: return a trivial transformation
       const summary = input.text.slice(0, 120)
       return { success: true, output: { summary } }

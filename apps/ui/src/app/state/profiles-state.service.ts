@@ -1,6 +1,7 @@
 import { Injectable, NgZone } from '@angular/core'
 import type { ProfileInfo } from '../models/ui.models'
 import { ChatStateService } from './chat-state.service'
+import { RuntimeIpcService } from '../runtime-ipc.service'
 import { SessionService } from './session.service'
 import { SetupStateService } from './setup-state.service'
 import { ToolOutputsStateService } from './tool-outputs-state.service'
@@ -23,17 +24,15 @@ export class ProfilesStateService {
   switchConfirmOpen = false
   pendingProfileId: string | null = null
 
-  private unsubscribe: (() => void) | null = null
-
   constructor(
     private zone: NgZone,
+    private runtimeIpc: RuntimeIpcService,
     private session: SessionService,
     private toolOutputs: ToolOutputsStateService,
     private trust: TrustStateService,
     private setup: SetupStateService,
     private chat: ChatStateService,
   ) {
-    this.attachListener()
   }
 
   async refresh(): Promise<void> {
@@ -41,12 +40,20 @@ export class ProfilesStateService {
     this.busy = true
 
     try {
-      if (!window.ActaAPI) return
-      const res = await window.ActaAPI.listProfiles()
-      this.profiles = res.profiles
-      this.profileId = res.activeProfileId
-      this.selection = res.activeProfileId
-      this.session.setProfileId(res.activeProfileId)
+      const list = await this.runtimeIpc.profileList()
+      const active = list.profiles.find(p => p.active) ?? null
+
+      this.profiles = list.profiles.map(p => ({
+        id: p.id,
+        name: p.name,
+        isActive: p.active,
+        dataPath: '',
+      }))
+
+      const activeId = active?.id ?? (this.profiles[0]?.id ?? 'default')
+      this.profileId = activeId
+      this.selection = activeId
+      this.session.setProfileId(activeId)
     } catch {
       // ignore (UI scaffold only)
     } finally {
@@ -104,8 +111,7 @@ export class ProfilesStateService {
 
     this.busy = true
     try {
-      if (!window.ActaAPI) return
-      await window.ActaAPI.createProfile({ name })
+      await this.runtimeIpc.profileCreate({ name })
       this.newProfileName = ''
       await this.refresh()
     } catch {
@@ -138,8 +144,7 @@ export class ProfilesStateService {
 
     this.busy = true
     try {
-      if (!window.ActaAPI) return
-      await window.ActaAPI.deleteProfile({ profileId, deleteFiles })
+      await this.runtimeIpc.profileDelete({ profileId, deleteFiles })
       this.cancelDelete()
       await this.refresh()
       await this.trust.loadTrustLevel()
@@ -160,8 +165,7 @@ export class ProfilesStateService {
     this.busy = true
 
     try {
-      if (!window.ActaAPI) return
-      const res = await window.ActaAPI.switchProfile({ profileId })
+      const res = await this.runtimeIpc.profileSwitch({ profileId })
       this.profileId = res.profile.id
       this.selection = res.profile.id
       this.session.setProfileId(res.profile.id)
@@ -175,21 +179,5 @@ export class ProfilesStateService {
     } finally {
       this.busy = false
     }
-  }
-
-  private attachListener(): void {
-    if (!window.ActaAPI) return
-    if (this.unsubscribe) return
-
-    this.unsubscribe = window.ActaAPI.onProfileChanged(payload => {
-      this.zone.run(() => {
-        this.profileId = payload.profile.id
-        this.selection = payload.profile.id
-        this.session.setProfileId(payload.profile.id)
-        void this.refresh()
-        void this.trust.loadTrustLevel()
-        void this.setup.loadConfigAndMaybeOpenWizard()
-      })
-    })
   }
 }

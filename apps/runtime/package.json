@@ -6,13 +6,15 @@
   "types": "dist/main.d.ts",
   "scripts": {
     "dev": "nodemon --exec ts-node src/main.ts",
-    "build": "tsc",
+    "build": "tsc -b",
     "start": "node dist/main.js"
   },
   "dependencies": {
     "@acta/core": "0.1.0",
+    "@acta/ipc": "0.1.0",
     "@acta/logging": "0.1.0",
     "@acta/memory": "0.1.0",
+    "@acta/profiles": "0.1.0",
     "@acta/tools": "0.1.0",
     "@acta/trust": "0.1.0",
     "@nestjs/common": "^10.0.0",

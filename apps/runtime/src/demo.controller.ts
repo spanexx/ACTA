@@ -3,9 +3,12 @@ import { createDefaultRegistry } from '@acta/tools'
 import { evaluatePermission, type PermissionRequest, type TrustProfile } from '@acta/trust'
 import { createMemoryStore } from '@acta/memory'
 import { createLogger } from '@acta/logging'
+import { ProfileService } from './profile.service'
 
 @Controller('demo')
 export class DemoController {
+  constructor(private readonly profileService: ProfileService) {}
+
   @Get()
   async run() {
     const logger = createLogger('demo')
@@ -48,7 +51,14 @@ export class DemoController {
       )
     }
 
-    const store = createMemoryStore()
+    let memoryDir: string | undefined
+    try {
+      memoryDir = await this.profileService.getMemoryDir(profileId)
+    } catch {
+      memoryDir = this.profileService.getActiveMemoryDir() ?? undefined
+    }
+
+    const store = createMemoryStore(memoryDir ? { dir: memoryDir } : undefined)
     await store.add('demo:lastRun', { ok: !!toolResult?.success })
     const lastRun = await store.get('demo:lastRun')
 

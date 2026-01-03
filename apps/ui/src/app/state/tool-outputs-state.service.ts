@@ -175,7 +175,17 @@ export class ToolOutputsStateService {
     if (!stepId.length) return
 
     const mappedStatus: 'running' | 'completed' | 'error' | null =
-      status === 'start' ? 'running' : status === 'completed' ? 'completed' : status === 'error' ? 'error' : null
+      status === 'in-progress'
+        ? 'running'
+        : status === 'completed'
+          ? 'completed'
+          : status === 'failed'
+            ? 'error'
+            : status === 'start'
+              ? 'running'
+              : status === 'error'
+                ? 'error'
+                : null
 
     if (!mappedStatus) return
 
@@ -216,13 +226,13 @@ export class ToolOutputsStateService {
       progress,
       preview:
         mappedStatus === 'error'
-          ? String(step?.error ?? 'error')
+          ? String(step?.failureReason ?? step?.error ?? 'error')
           : mappedStatus === 'completed'
             ? outputPreview
               ? `Completed: ${outputPreview}`
               : 'Completed'
             : 'Running',
-      error: step?.error,
+      error: step?.failureReason ?? step?.error,
       raw: step,
       expanded: existing?.expanded ?? false,
       artifacts: Array.isArray(step?.artifacts) ? step.artifacts.map((p: any) => ({ path: String(p) })) : undefined,

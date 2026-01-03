@@ -1,6 +1,25 @@
 import { Injectable } from '@angular/core'
 import { BehaviorSubject, Subject } from 'rxjs'
-import { isValidActaMessage, validatePayload, type ActaMessage, type TaskRequest } from '@acta/ipc'
+import {
+  isValidActaMessage,
+  validatePayload,
+  type ActaMessage,
+  type ActaMessageType,
+  type ProfileActivePayload,
+  type ProfileCreatePayload,
+  type ProfileCreateRequest,
+  type ProfileDeletePayload,
+  type ProfileDeleteRequest,
+  type ProfileGetPayload,
+  type ProfileGetRequest,
+  type ProfileListPayload,
+  type ProfileUpdatePayload,
+  type ProfileUpdateRequest,
+  type ProfileSwitchPayload,
+  type ProfileSwitchRequest,
+  type TaskRequest,
+  type TaskStopRequest,
+} from '@acta/ipc'
 
 export type RuntimeConnectionState = {
   status: 'disconnected' | 'connecting' | 'connected'
@@ -13,6 +32,8 @@ export class RuntimeIpcService {
   private shouldRun = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectAttempt = 0
+
+  private pending = new Map<string, (msg: ActaMessage) => void>()
 
   private connectionSubject = new BehaviorSubject<RuntimeConnectionState>({ status: 'disconnected' })
   readonly connection$ = this.connectionSubject.asObservable()
@@ -65,6 +86,16 @@ export class RuntimeIpcService {
       if (!isValidActaMessage(parsed)) return
       if (!validatePayload(parsed.type, parsed.payload)) return
 
+      const replyTo = typeof parsed.replyTo === 'string' ? parsed.replyTo : ''
+      if (replyTo.length) {
+        const resolver = this.pending.get(replyTo)
+        if (resolver) {
+          this.pending.delete(replyTo)
+          resolver(parsed)
+          return
+        }
+      }
+
       this.messagesSubject.next(parsed)
     }
   }
@@ -105,6 +136,27 @@ export class RuntimeIpcService {
     return correlationId
   }
 
+  sendTaskStop(payload: TaskStopRequest, opts?: { profileId?: string; correlationId?: string }): void {
+    const correlationId = opts?.correlationId ?? payload.correlationId ?? this.newId()
+
+    const msg: ActaMessage<TaskStopRequest> = {
+      id: this.newId(),
+      type: 'task.stop',
+      source: 'ui',
+      timestamp: Date.now(),
+      payload,
+      correlationId,
+      profileId: opts?.profileId,
+    }
+
+    const ws = this.ws
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      throw new Error('Runtime IPC is not connected')
+    }
+
+    ws.send(JSON.stringify(msg))
+  }
+
   sendPermissionResponse(
     payload: { requestId: string; decision: 'allow' | 'deny'; remember?: boolean },
     opts: { profileId?: string; correlationId: string; replyTo: string },
@@ -126,6 +178,80 @@ export class RuntimeIpcService {
     }
 
     ws.send(JSON.stringify(msg))
+  }
+
+  async request<TPayload>(
+    type: ActaMessageType,
+    payload: TPayload,
+    opts?: { profileId?: string; correlationId?: string; timeoutMs?: number },
+  ): Promise<ActaMessage> {
+    const ws = this.ws
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      throw new Error('Runtime IPC is not connected')
+    }
+
+    const id = this.newId()
+    const correlationId = opts?.correlationId ?? id
+    const timeoutMs = opts?.timeoutMs ?? 7_500
+
+    const msg: ActaMessage<TPayload> = {
+      id,
+      type,
+      source: 'ui',
+      timestamp: Date.now(),
+      payload,
+      correlationId,
+      profileId: opts?.profileId,
+    }
+
+    return await new Promise<ActaMessage>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pending.delete(id)
+        reject(new Error('Runtime IPC request timeout'))
+      }, timeoutMs)
+
+      this.pending.set(id, reply => {
+        clearTimeout(timeout)
+        resolve(reply)
+      })
+
+      ws.send(JSON.stringify(msg))
+    })
+  }
+
+  async profileActive(): Promise<ProfileActivePayload> {
+    const reply = await this.request('profile.active', {})
+    return reply.payload as ProfileActivePayload
+  }
+
+  async profileList(): Promise<ProfileListPayload> {
+    const reply = await this.request('profile.list', {})
+    return reply.payload as ProfileListPayload
+  }
+
+  async profileCreate(payload: ProfileCreateRequest): Promise<ProfileCreatePayload> {
+    const reply = await this.request('profile.create', payload)
+    return reply.payload as ProfileCreatePayload
+  }
+
+  async profileDelete(payload: ProfileDeleteRequest): Promise<ProfileDeletePayload> {
+    const reply = await this.request('profile.delete', payload)
+    return reply.payload as ProfileDeletePayload
+  }
+
+  async profileSwitch(payload: ProfileSwitchRequest): Promise<ProfileSwitchPayload> {
+    const reply = await this.request('profile.switch', payload)
+    return reply.payload as ProfileSwitchPayload
+  }
+
+  async profileGet(payload: ProfileGetRequest): Promise<ProfileGetPayload> {
+    const reply = await this.request('profile.get', payload)
+    return reply.payload as ProfileGetPayload
+  }
+
+  async profileUpdate(payload: ProfileUpdateRequest): Promise<ProfileUpdatePayload> {
+    const reply = await this.request('profile.update', payload)
+    return reply.payload as ProfileUpdatePayload
   }
 
   private scheduleReconnect(): void {

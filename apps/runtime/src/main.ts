@@ -6,9 +6,8 @@ import { createLogger } from '@acta/logging'
 
 async function bootstrap() {
   const cfg = loadConfig()
-  const logger = createLogger('runtime', cfg.logLevel)
-
   const app = await NestFactory.create(AppModule)
+  const logger = createLogger('runtime', cfg.logLevel)
   await app.listen(cfg.port)
   // Minimal ready log as per Phase-1 expectations
   logger.info(`Acta Phase-1 Runtime (NestJS) ready on :${cfg.port}`, {

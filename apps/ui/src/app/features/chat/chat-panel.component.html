@@ -50,6 +50,9 @@
                     <input #fileInput type="file" multiple class="composer__fileInput" (change)="chat.onFileInputChange($event)" />
                 </div>
 
+                <button type="button" class="icon-btn" (click)="chat.stop()" [disabled]="!chat.canStop()" aria-label="Stop">
+                    Stop
+                </button>
                 <button type="submit" class="send-btn" [disabled]="!chat.canSend()" aria-label="Send">
                     Send
                 </button>

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core'
 import type { TrustLevel } from '../models/ui.models'
+import { RuntimeIpcService } from '../runtime-ipc.service'
 import { ChatStateService } from './chat-state.service'
 import { PermissionStateService } from './permission-state.service'
 import { SessionService } from './session.service'
@@ -14,18 +15,19 @@ export class TrustStateService {
 
   constructor(
     private session: SessionService,
+    private runtimeIpc: RuntimeIpcService,
     private chat: ChatStateService,
     private permission: PermissionStateService,
   ) {}
 
   async loadTrustLevel(): Promise<void> {
     try {
-      if (!window.ActaAPI) return
-      const res = await window.ActaAPI.getTrustLevel()
-      this.level = res.trustLevel
-      this.selection = res.trustLevel
-      this.session.setProfileId(res.profileId)
-      this.session.setTrustLevel(res.trustLevel)
+      const res = await this.runtimeIpc.profileGet({})
+      const level = res.profile.trust.defaultTrustLevel as any
+      this.level = level
+      this.selection = level
+      this.session.setProfileId(res.profile.id)
+      this.session.setTrustLevel(level)
     } catch {
       // ignore (UI scaffold only)
     }
@@ -71,19 +73,19 @@ export class TrustStateService {
     this.busy = true
 
     try {
-      if (!window.ActaAPI) {
-        this.selection = this.level
-        return
-      }
+      const res = await this.runtimeIpc.profileUpdate({
+        profileId: this.session.profileId,
+        patch: { trust: { defaultTrustLevel: level as any } },
+      })
 
-      const res = await window.ActaAPI.setTrustLevel({ trustLevel: level })
-      this.level = res.trustLevel
-      this.selection = res.trustLevel
-      this.session.setProfileId(res.profileId)
-      this.session.setTrustLevel(res.trustLevel)
+      const nextLevel = res.profile.trust.defaultTrustLevel as any
+      this.level = nextLevel
+      this.selection = nextLevel
+      this.session.setProfileId(res.profile.id)
+      this.session.setTrustLevel(nextLevel)
 
       this.chat.addSystemMessage(
-        `Trust level set to ${this.trustModeLabel(res.trustLevel)} for profile ${res.profileId}.`,
+        `Trust level set to ${this.trustModeLabel(nextLevel)} for profile ${res.profile.id}.`,
         Date.now(),
       )
     } catch {

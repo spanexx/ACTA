@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core'
 import type { ProfileSetupConfig, TrustLevel } from '../models/ui.models'
+import { RuntimeIpcService } from '../runtime-ipc.service'
 import { ChatStateService } from './chat-state.service'
 import { SessionService } from './session.service'
 
@@ -23,6 +24,7 @@ export class SetupStateService {
   constructor(
     private chat: ChatStateService,
     private session: SessionService,
+    private runtimeIpc: RuntimeIpcService,
   ) {}
 
   openWizard(): void {
@@ -35,9 +37,16 @@ export class SetupStateService {
 
   async loadConfigAndMaybeOpenWizard(): Promise<void> {
     try {
-      if (!window.ActaAPI) return
-      const res = await window.ActaAPI.getSetupConfig()
-      this.config = { ...res.config }
+      const res = await this.runtimeIpc.profileGet({})
+      const p = res.profile
+      this.config = {
+        setupComplete: Boolean(p.setupComplete),
+        modelProvider: p.llm.adapterId as any,
+        model: p.llm.model,
+        endpoint: p.llm.endpoint,
+        cloudWarnBeforeSending: p.llm.cloudWarnBeforeSending,
+        trustLevel: (p.trust.defaultTrustLevel as any) ?? 1,
+      }
 
       if (this.config.modelProvider === 'ollama') {
         const candidate = (this.config.model ?? '').trim()
@@ -120,9 +129,30 @@ export class SetupStateService {
 
     this.busy = true
     try {
-      if (!window.ActaAPI) return
-      const res = await window.ActaAPI.completeSetup({ config: this.config })
-      this.config = { ...res.config }
+      const provider = this.config.modelProvider ?? 'ollama'
+      const mode = provider === 'openai' || provider === 'anthropic' ? 'cloud' : 'local'
+
+      const res = await this.runtimeIpc.profileUpdate({
+        profileId: this.session.profileId,
+        patch: {
+          setupComplete: true,
+          trust: {
+            defaultTrustLevel: (this.config.trustLevel as any) ?? 1,
+          },
+          llm: {
+            mode,
+            adapterId: provider as any,
+            model: this.config.model ?? 'llama3:8b',
+            endpoint: this.config.endpoint,
+            cloudWarnBeforeSending: this.config.cloudWarnBeforeSending,
+          },
+        },
+      })
+
+      this.config = {
+        ...this.config,
+        setupComplete: Boolean(res.profile.setupComplete),
+      }
 
       if (typeof this.config.trustLevel === 'number') {
         const tl = this.config.trustLevel as TrustLevel
@@ -130,7 +160,7 @@ export class SetupStateService {
       }
 
       this.open = false
-      this.chat.addSystemMessage(`Setup saved for profile ${res.profileId}.`, Date.now())
+      this.chat.addSystemMessage(`Setup saved for profile ${this.session.profileId}.`, Date.now())
     } catch {
       // ignore (UI scaffold only)
     } finally {

@@ -11,6 +11,7 @@ export class ChatStateService {
   messages: ChatMessage[] = []
 
   private planMessageIdByCorrelation = new Map<string, string>()
+  private activeCorrelationId: string | null = null
 
   constructor(
     private runtimeIpc: RuntimeIpcService,
@@ -85,7 +86,17 @@ export class ChatStateService {
     if (!stepId.length) return
 
     const mappedStatus: PlanStepStatus | null =
-      status === 'start' ? 'in-progress' : status === 'completed' ? 'completed' : status === 'error' ? 'failed' : null
+      status === 'in-progress'
+        ? 'in-progress'
+        : status === 'completed'
+          ? 'completed'
+          : status === 'failed'
+            ? 'failed'
+            : status === 'start'
+              ? 'in-progress'
+              : status === 'error'
+                ? 'failed'
+                : null
 
     if (!mappedStatus) return
 
@@ -104,13 +115,46 @@ export class ChatStateService {
 
   handleTaskResultMessage(msg: ActaMessage): void {
     if (msg.type !== 'task.result') return
-    this.addSystemMessage('Task completed.')
+    const payload = msg.payload as any
+    const report = typeof payload?.report === 'string' ? payload.report.trim() : ''
+    this.addSystemMessage(report.length ? report : 'Task completed.')
+
+    if (typeof msg.correlationId === 'string' && this.activeCorrelationId === msg.correlationId) {
+      this.activeCorrelationId = null
+    }
   }
 
   handleTaskErrorMessage(msg: ActaMessage): void {
     if (msg.type !== 'task.error') return
     const err = msg.payload as any
     this.addSystemMessage(`Task error: ${String(err?.message ?? 'unknown')}`)
+
+    if (typeof msg.correlationId === 'string' && this.activeCorrelationId === msg.correlationId) {
+      this.activeCorrelationId = null
+    }
+  }
+
+  canStop(): boolean {
+    return typeof this.activeCorrelationId === 'string' && this.activeCorrelationId.length > 0
+  }
+
+  stop(): void {
+    if (!this.canStop()) return
+    const correlationId = this.activeCorrelationId as string
+
+    try {
+      this.runtimeIpc.sendTaskStop(
+        { correlationId },
+        {
+          profileId: this.session.profileId,
+          correlationId,
+        },
+      )
+      this.addSystemMessage('Stop requested. Waiting for current step to finish…')
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'Runtime is not connected'
+      this.addSystemMessage(`Could not stop task: ${reason}`)
+    }
   }
 
   togglePlan(messageId: string): void {
@@ -163,6 +207,7 @@ export class ChatStateService {
 
     const now = Date.now()
     const taskId = this.newId()
+    this.activeCorrelationId = taskId
 
     const userMsg: ChatMessage = {
       id: this.newId(),

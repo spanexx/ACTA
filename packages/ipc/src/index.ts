@@ -5,6 +5,8 @@ export type {
   ActaMessage,
   ActaMessageType,
   TaskRequest,
+  TaskStopRequest,
+  RuntimeTask,
   AgentPlan,
   AgentStep,
   ToolResult,
@@ -13,7 +15,22 @@ export type {
   TaskResultPayload,
   TaskErrorPayload,
   PermissionRequestPayload,
+  PermissionResponsePayload,
+  ProfileSummary,
+  ProfileListPayload,
+  ProfileCreateRequest,
+  ProfileCreatePayload,
+  ProfileDeleteRequest,
+  ProfileDeletePayload,
+  ProfileSwitchRequest,
+  ProfileSwitchPayload,
+  ProfileActivePayload,
+  ProfileGetRequest,
+  ProfileDoc,
+  ProfileGetPayload,
+  ProfileUpdateRequest,
+  ProfileUpdatePayload,
 } from './types'
 
-export { isValidActaMessage, validatePayload } from './validator'
+export { isValidActaMessage, validatePayload, validatePayloadDetailed, type PayloadValidationResult } from './validator'
 export { createIpcAdapter, type IpcAdapter, type IpcAdapterOptions } from './adapter'

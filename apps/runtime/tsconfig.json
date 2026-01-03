@@ -13,5 +13,16 @@
     "emitDecoratorMetadata": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/ipc" },
+    { "path": "../../packages/profiles" },
+    { "path": "../../packages/logging" },
+    { "path": "../../packages/trust" },
+    { "path": "../../packages/tools" },
+    { "path": "../../packages/llm" },
+    { "path": "../../packages/agent" },
+    { "path": "../../packages/memory" }
+  ]
 }

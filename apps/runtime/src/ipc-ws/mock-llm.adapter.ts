@@ -5,17 +5,45 @@ export class RuntimeMockLLMAdapter implements LLMAdapter {
 
   async generate(request: LLMRequest): Promise<LLMResponse> {
     const hasAttachments = request.prompt.includes('Attachments (paths only):')
+
+    const wantsTwoSteps = request.prompt.includes('test:two-steps')
+    const forceToolMissing = request.prompt.includes('test:tool-missing')
+    const forceToolFail = request.prompt.includes('test:tool-fail')
+    const forceSlow = request.prompt.includes('test:slow')
+
+    const toolId = forceToolMissing ? 'missing.tool' : 'explain.content'
+    const step1Text = forceToolFail ? '' : forceSlow ? `SLOW ${request.prompt}` : request.prompt
+
+    const steps = wantsTwoSteps
+      ? [
+          {
+            id: 'step-1',
+            tool: toolId,
+            intent: 'analyze input',
+            input: { text: step1Text },
+            requiresPermission: hasAttachments,
+          },
+          {
+            id: 'step-2',
+            tool: 'explain.content',
+            intent: 'follow up',
+            input: { text: request.prompt },
+            requiresPermission: false,
+          },
+        ]
+      : [
+          {
+            id: 'step-1',
+            tool: toolId,
+            intent: 'analyze input',
+            input: { text: step1Text },
+            requiresPermission: hasAttachments,
+          },
+        ]
+
     const planJson = JSON.stringify({
       goal: `Process: ${request.prompt.substring(0, 50)}...`,
-      steps: [
-        {
-          id: 'step-1',
-          tool: 'explain.content',
-          intent: 'analyze input',
-          input: { text: request.prompt },
-          requiresPermission: hasAttachments,
-        },
-      ],
+      steps,
     })
 
     return {

@@ -1,6 +1,7 @@
 import {
   isValidActaMessage,
   validatePayload,
+  validatePayloadDetailed,
   type ActaMessage,
   type TaskErrorPayload,
 } from '@acta/ipc'
@@ -25,6 +26,7 @@ export function parseIncomingActaMessage(text: string): ParsedIncomingMessage {
     return {
       ok: false,
       error: {
+        taskId: 'unknown',
         code: 'ipc.invalid_message',
         message: 'Empty WebSocket message payload',
       },
@@ -38,6 +40,7 @@ export function parseIncomingActaMessage(text: string): ParsedIncomingMessage {
     return {
       ok: false,
       error: {
+        taskId: 'unknown',
         code: 'ipc.invalid_json',
         message: 'Message must be valid JSON',
       },
@@ -48,6 +51,7 @@ export function parseIncomingActaMessage(text: string): ParsedIncomingMessage {
     return {
       ok: false,
       error: {
+        taskId: 'unknown',
         code: 'ipc.invalid_message',
         message: 'Message must match ActaMessage envelope',
       },
@@ -55,9 +59,23 @@ export function parseIncomingActaMessage(text: string): ParsedIncomingMessage {
   }
 
   if (!validatePayload(parsed.type, parsed.payload)) {
+    const detail = validatePayloadDetailed(parsed.type, parsed.payload)
+    if (!detail.ok) {
+      return {
+        ok: false,
+        error: {
+          taskId: typeof parsed.id === 'string' ? parsed.id : 'unknown',
+          code: detail.code,
+          message: detail.message,
+        },
+        context: parsed,
+      }
+    }
+
     return {
       ok: false,
       error: {
+        taskId: typeof parsed.id === 'string' ? parsed.id : 'unknown',
         code: 'ipc.invalid_payload',
         message: `Invalid payload for message type ${parsed.type}`,
       },
