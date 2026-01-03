@@ -1,7 +1,18 @@
-// Demo tool implementation for testing the tool loader
-
+/*
+ * Code Map: Core Demo Tool
+ * - Exports `demo_tool` ActaTool used by default registry + loader smoke tests.
+ * - Provides trivial execute implementation returning summary output.
+ *
+ * CID Index:
+ * CID:core-demo-tool-001 -> demo_tool meta
+ * CID:core-demo-tool-002 -> execute
+ *
+ * Lookup: rg -n "CID:core-demo-tool-" packages/tools/src/core/demo-tool/index.ts
+ */
 import { ActaTool, ToolResult, ToolContext } from '@acta/core'
 
+// CID:core-demo-tool-001 - Demo Tool Metadata
+// Purpose: Defines demo.tool manifest used by default registry loader tests.
 export const demo_tool: ActaTool = {
   meta: {
     id: 'demo.tool',
@@ -21,6 +32,8 @@ export const demo_tool: ActaTool = {
     entry: 'index.ts'
   },
 
+  // CID:core-demo-tool-002 - Demo Tool Execute
+  // Purpose: Returns a simple echoed response for testing loader/sandbox.
   async execute(input: any, context: ToolContext): Promise<ToolResult> {
     return {
       success: true,

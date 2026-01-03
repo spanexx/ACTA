@@ -6,7 +6,7 @@ export type PermissionDecision = 'deny' | 'allow_once' | 'allow_always'
 
 export type TrustLevel = 0 | 1 | 2 | 3
 
-export type ModelProvider = 'ollama' | 'lmstudio' | 'openai' | 'anthropic'
+export type ModelProvider = 'ollama' | 'lmstudio' | 'openai' | 'anthropic' | 'gemini'
 
 export type ProfileInfo = {
   id: string

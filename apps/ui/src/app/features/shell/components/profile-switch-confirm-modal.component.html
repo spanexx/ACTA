@@ -1,10 +1,10 @@
-<div class="permission-modal__overlay" *ngIf="profiles.switchConfirmOpen && profiles.pendingProfileId" (click)="profiles.cancelSwitch()">
+<div class="permission-modal__overlay" *ngIf="profiles.switchConfirmOpen && profiles.pendingProfileId" (click)="profilesActions.cancelSwitch()">
     <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="profileSwitchConfirmTitle" (click)="$event.stopPropagation()">
         <header class="permission-modal__header">
             <div class="permission-modal__headerTitle" id="profileSwitchConfirmTitle">
                 SWITCH PROFILE
             </div>
-            <button type="button" class="permission-modal__close" (click)="profiles.cancelSwitch()" [disabled]="profiles.busy" aria-label="Close">
+            <button type="button" class="permission-modal__close" (click)="profilesActions.cancelSwitch()" [disabled]="profiles.busy" aria-label="Close">
                 ✕
             </button>
         </header>
@@ -32,11 +32,11 @@
         </div>
 
         <footer class="permission-modal__footer">
-            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.cancelSwitch()" [disabled]="profiles.busy">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profilesActions.cancelSwitch()" [disabled]="profiles.busy">
                 Cancel
             </button>
             <div class="permission-modal__footerSpacer"></div>
-            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profiles.confirmSwitch()" [disabled]="profiles.busy">
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profilesActions.confirmSwitch()" [disabled]="profiles.busy">
                 Switch anyway
             </button>
         </footer>

@@ -1,3 +1,15 @@
+/*
+ * Code Map: Runtime WebSocket Transport
+ * - RuntimeWsTransport type: Shape of transport instance
+ * - createRuntimeWsTransport: Factory that sets up HTTP+WS server, message handling
+ *
+ * CID Index:
+ * CID:ws-transport-001 -> RuntimeWsTransport type
+ * CID:ws-transport-002 -> createRuntimeWsTransport
+ *
+ * Quick lookup: rg -n "CID:ws-transport-" /home/spanexx/Shared/Projects/ACTA/apps/runtime/src/ipc-ws/ws-transport.ts
+ */
+
 import * as http from 'http'
 import type { IncomingMessage } from 'http'
 import type { AddressInfo } from 'node:net'
@@ -7,6 +19,10 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { isAllowedOrigin } from './origin.util'
 import { decodeWsMessageData, parseIncomingActaMessage } from './ws-message.util'
 
+// CID:ws-transport-001 - RuntimeWsTransport type
+// Purpose: Define structure of runtime WS transport with server references and lifecycle methods
+// Uses: http.Server, WebSocketServer, WebSocket
+// Used by: RuntimeWsIpcServerCore for lifecycle management
 export type RuntimeWsTransport = {
   server: http.Server
   wss: WebSocketServer
@@ -15,6 +31,10 @@ export type RuntimeWsTransport = {
   close: () => Promise<void>
 }
 
+// CID:ws-transport-002 - createRuntimeWsTransport
+// Purpose: Configure HTTP upgrade handling, perform origin validation, wire WS events, expose lifecycle controls
+// Uses: Node HTTP/WS, origin util, ws-message util, logging, callbacks for message/parse/handler errors
+// Used by: RuntimeWsIpcServerCore to spin up IPC WebSocket server
 export function createRuntimeWsTransport(opts: {
   host: string
   port: number

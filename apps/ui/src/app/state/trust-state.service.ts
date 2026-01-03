@@ -1,3 +1,21 @@
+/*
+ * Code Map: Trust Level State
+ * - TrustStateService: Holds trust level UI state and persists trust changes via runtime IPC.
+ * - loadTrustLevel(): Loads trust level for current profile.
+ * - onSelectionChange(): Applies selection; may open confirmation when increasing trust.
+ * - apply(): Persists trust change and emits a system message.
+ *
+ * CID Index:
+ * CID:trust-state.service-001 -> TrustStateService (state container)
+ * CID:trust-state.service-002 -> loadTrustLevel
+ * CID:trust-state.service-003 -> onSelectionChange
+ * CID:trust-state.service-004 -> cancelChange/confirmChange
+ * CID:trust-state.service-005 -> apply
+ * CID:trust-state.service-006 -> trustModeLabel
+ *
+ * Lookup: rg -n "CID:trust-state.service-" apps/ui/src/app/state/trust-state.service.ts
+ */
+
 import { Injectable } from '@angular/core'
 import type { TrustLevel } from '../models/ui.models'
 import { RuntimeIpcService } from '../runtime-ipc.service'
@@ -5,6 +23,10 @@ import { ChatStateService } from './chat-state.service'
 import { PermissionStateService } from './permission-state.service'
 import { SessionService } from './session.service'
 
+// CID:trust-state.service-001 - Trust State Container
+// Purpose: Stores trust level state and coordinates trust updates with the runtime.
+// Uses: RuntimeIpcService (profileGet/profileUpdate), SessionService, ChatStateService, PermissionStateService
+// Used by: Trust controls in shell UI; AppShellService init; profile delete/switch flows
 @Injectable({ providedIn: 'root' })
 export class TrustStateService {
   level: TrustLevel = 1
@@ -20,6 +42,10 @@ export class TrustStateService {
     private permission: PermissionStateService,
   ) {}
 
+  // CID:trust-state.service-002 - Load Trust Level
+  // Purpose: Loads trust level from runtime and syncs it into session state.
+  // Uses: RuntimeIpcService.profileGet(), SessionService.setProfileId(), SessionService.setTrustLevel()
+  // Used by: AppShellService init; profile delete/switch flows
   async loadTrustLevel(): Promise<void> {
     try {
       const res = await this.runtimeIpc.profileGet({})
@@ -33,6 +59,10 @@ export class TrustStateService {
     }
   }
 
+  // CID:trust-state.service-003 - Handle Selection Change
+  // Purpose: Applies trust selection changes; may open confirm modal when increasing trust.
+  // Uses: PermissionStateService.open (blocks changes while permission modal is open)
+  // Used by: Trust controls UI
   async onSelectionChange(next: TrustLevel): Promise<void> {
     if (this.busy) {
       this.selection = this.level
@@ -53,6 +83,10 @@ export class TrustStateService {
     await this.apply(next)
   }
 
+  // CID:trust-state.service-004 - Confirm Modal Actions
+  // Purpose: Cancels or confirms a pending trust increase.
+  // Uses: apply()
+  // Used by: Trust confirm modal
   cancelChange(): void {
     this.confirmOpen = false
     this.pending = null
@@ -67,6 +101,10 @@ export class TrustStateService {
     this.pending = null
   }
 
+  // CID:trust-state.service-005 - Persist Trust Level
+  // Purpose: Persists trust update via runtime IPC and emits a system message.
+  // Uses: RuntimeIpcService.profileUpdate(), ChatStateService.addSystemMessage(), SessionService
+  // Used by: onSelectionChange(), confirmChange()
   async apply(level: TrustLevel): Promise<void> {
     if (this.busy) return
 
@@ -95,6 +133,10 @@ export class TrustStateService {
     }
   }
 
+  // CID:trust-state.service-006 - Trust Mode Label
+  // Purpose: Converts numeric trust level to a human-readable label.
+  // Uses: simple numeric mapping
+  // Used by: UI labels and system messages
   trustModeLabel(level: number): string {
     if (level <= 0) return 'Deny (0)'
     if (level === 1) return 'Ask every time (1)'

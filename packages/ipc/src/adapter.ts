@@ -1,9 +1,23 @@
-// IPC server adapter stub (Phase-1)
-// Factory to create a minimal IPC server; actual transport to be implemented later
+/*
+ * Code Map: IPC Adapter Stub
+ * - IpcAdapter / IpcAdapterOptions: Interfaces describing IPC adapter contract
+ * - createIpcAdapter: Factory to instantiate transport-specific adapter
+ * - HttpIpcAdapter: Phase-1 HTTP stub with logging helpers
+ *
+ * CID Index:
+ * CID:ipc-adapter-001 -> IpcAdapter interface
+ * CID:ipc-adapter-002 -> IpcAdapterOptions interface
+ * CID:ipc-adapter-003 -> createIpcAdapter factory
+ * CID:ipc-adapter-004 -> HttpIpcAdapter class
+ *
+ * Quick lookup: rg -n "CID:ipc-adapter-" /home/spanexx/Shared/Projects/ACTA/packages/ipc/src/adapter.ts
+ */
 
 import type { ActaMessage } from './types'
 import { isValidActaMessage } from './validator'
 
+// CID:ipc-adapter-001 - IpcAdapter interface
+// Purpose: Define lifecycle/event contract adapters must satisfy
 export interface IpcAdapter {
   start(): Promise<void>
   stop(): Promise<void>
@@ -11,12 +25,16 @@ export interface IpcAdapter {
   onMessage(callback: (msg: ActaMessage) => void): void
 }
 
+// CID:ipc-adapter-002 - IpcAdapterOptions interface
+// Purpose: Specify transport configuration for adapter factory
 export interface IpcAdapterOptions {
   transport: 'http' | 'unix-socket' // Phase-1: http only
   port?: number // for http transport
   path?: string // for unix-socket
 }
 
+// CID:ipc-adapter-003 - createIpcAdapter
+// Purpose: Instantiate adapter based on transport type
 export function createIpcAdapter(options: IpcAdapterOptions): IpcAdapter {
   if (options.transport === 'http') {
     return new HttpIpcAdapter(options.port ?? 5001)
@@ -26,6 +44,8 @@ export function createIpcAdapter(options: IpcAdapterOptions): IpcAdapter {
 }
 
 // Minimal HTTP-based IPC adapter (Phase-1 stub)
+// CID:ipc-adapter-004 - HttpIpcAdapter
+// Purpose: Placeholder HTTP adapter that logs operations and validates messages
 class HttpIpcAdapter implements IpcAdapter {
   private server?: any // Express-like app placeholder
   private listeners: Array<(msg: ActaMessage) => void> = []

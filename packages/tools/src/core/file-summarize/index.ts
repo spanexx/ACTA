@@ -1,15 +1,29 @@
-// File summarize tool implementation
-// Summarizes file content using LLM (supports TXT, CSV, JSON, MD)
-
+/*
+ * Code Map: Core File Summarize Tool
+ * - Helper generateSummary(): Produces stats + preview for supported formats.
+ * - Tool metadata/execute: Validates paths/formats, truncates content, returns summary.
+ *
+ * CID Index:
+ * CID:core-file-summarize-001 -> SummarizeInput type
+ * CID:core-file-summarize-002 -> generateSummary helper
+ * CID:core-file-summarize-003 -> tool metadata
+ * CID:core-file-summarize-004 -> execute
+ *
+ * Lookup: rg -n "CID:core-file-summarize-" packages/tools/src/core/file-summarize/index.ts
+ */
 import { ActaTool, ToolResult, ToolContext } from '@acta/core'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
+// CID:core-file-summarize-001 - Summarize Input
+// Purpose: Defines request payload for summary tool.
 interface SummarizeInput {
   path: string
   maxLength?: number
 }
 
+// CID:core-file-summarize-002 - generateSummary
+// Purpose: Builds summary describing counts/structure per format.
 function generateSummary(content: string, format: string): string {
   const lines = content.split('\n').filter(l => l.trim())
   const lineCount = lines.length
@@ -52,6 +66,8 @@ function generateSummary(content: string, format: string): string {
   return summary
 }
 
+// CID:core-file-summarize-003 - Tool Metadata
+// Purpose: Describes file.summarize manifest exposed to registry.
 export const file_summarize: ActaTool = {
   meta: {
     id: 'file.summarize',
@@ -72,6 +88,8 @@ export const file_summarize: ActaTool = {
     supportedFormats: ['txt', 'csv', 'json', 'md']
   },
 
+  // CID:core-file-summarize-004 - Execute
+  // Purpose: Validates input, prevents traversal, truncates content, generates summary.
   async execute(input: SummarizeInput, context: ToolContext): Promise<ToolResult> {
     try {
       if (!input || typeof input.path !== 'string') {

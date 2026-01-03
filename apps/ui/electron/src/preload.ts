@@ -1,5 +1,24 @@
+/*
+ * Code Map: Electron Preload (ActaAPI)
+ * - Defines IPC channel names and minimal shared payload types for the preload boundary.
+ * - Exposes `window.ActaAPI` via contextBridge with invoke-based RPC and event subscriptions.
+ *
+ * CID Index:
+ * CID:preload-001 -> IPC_CHANNELS (channel name constants)
+ * CID:preload-002 -> Preload-local shared types (Unsubscribe, payload shapes)
+ * CID:preload-003 -> ActaApi type
+ * CID:preload-004 -> api implementation
+ * CID:preload-005 -> exposeInMainWorld
+ *
+ * Lookup: rg -n "CID:preload-" apps/ui/electron/src/preload.ts
+ */
+
 import { contextBridge, ipcRenderer } from 'electron'
 
+// CID:preload-001 - IPC Channel Constants
+// Purpose: Local channel map used by preload to communicate with main.
+// Uses: Must match electron/src/ipc-contract.ts and main/ipc-handlers.ts
+// Used by: api invoke/send wrappers below
 const IPC_CHANNELS = {
   ping: 'acta:ping',
   permissionRequest: 'acta:permission.request',
@@ -19,6 +38,10 @@ const IPC_CHANNELS = {
   logsOpenFolder: 'acta:logs.openFolder',
 } as const
 
+// CID:preload-002 - Preload-Local Shared Types
+// Purpose: Minimal type definitions for the API surface exposed to the renderer.
+// Uses: Mirrors (roughly) electron/src/ipc-contract.ts
+// Used by: ActaApi type + handlers
 type Unsubscribe = () => void
 
 type PermissionDecision = 'deny' | 'allow_once' | 'allow_always'
@@ -68,6 +91,10 @@ type PermissionResponsePayload = {
   remember?: boolean
 }
 
+// CID:preload-003 - ActaApi Surface
+// Purpose: Defines the API exposed on window.ActaAPI.
+// Uses: invoke channels + subscription handlers
+// Used by: renderer code via global window.ActaAPI
 type ActaApi = {
   ping: () => Promise<string>
   onPermissionRequest: (handler: (event: PermissionRequestEvent) => void) => Unsubscribe
@@ -95,6 +122,10 @@ type ActaApi = {
   openLogsFolder: () => Promise<{ ok: boolean; path: string; error?: string }>
 }
 
+// CID:preload-004 - ActaApi Implementation
+// Purpose: Implements invoke-based IPC calls and event listeners for the renderer.
+// Uses: ipcRenderer.invoke/on/removeListener
+// Used by: Exposed via contextBridge
 const api: ActaApi = {
   ping: () => ipcRenderer.invoke(IPC_CHANNELS.ping),
   onPermissionRequest: handler => {
@@ -134,4 +165,8 @@ const api: ActaApi = {
   openLogsFolder: () => ipcRenderer.invoke(IPC_CHANNELS.logsOpenFolder),
 }
 
+// CID:preload-005 - Expose API
+// Purpose: Exposes the ActaAPI object to the isolated renderer world.
+// Uses: contextBridge.exposeInMainWorld
+// Used by: Renderer global `window.ActaAPI`
 contextBridge.exposeInMainWorld('ActaAPI', api)

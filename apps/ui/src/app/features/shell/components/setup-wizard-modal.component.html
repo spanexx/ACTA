@@ -25,6 +25,7 @@
                             <option value="lmstudio">LM Studio (local)</option>
                             <option value="openai">OpenAI (cloud)</option>
                             <option value="anthropic">Anthropic (cloud)</option>
+                            <option value="gemini">Gemini (cloud)</option>
                         </select>
                     </div>
                 </div>
@@ -64,7 +65,7 @@
                 </div>
             </ng-container>
 
-            <ng-container *ngIf="setup.config.modelProvider === 'openai' || setup.config.modelProvider === 'anthropic'">
+            <ng-container *ngIf="setup.config.modelProvider === 'openai' || setup.config.modelProvider === 'anthropic' || setup.config.modelProvider === 'gemini'">
                 <div class="permission-modal__sectionTitle">Cloud warning</div>
                 <label class="permission-modal__remember">
                     <input type="checkbox" name="cloudWarnBeforeSending" [(ngModel)]="setup.config.cloudWarnBeforeSending" [disabled]="setup.busy" />

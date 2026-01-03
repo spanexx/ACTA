@@ -1,20 +1,41 @@
-// IPC request validator stub (Phase-1)
-// Provides runtime type guards; can be swapped for Zod later
+/*
+ * Code Map: IPC Validator
+ * - Helper predicates (isPlainObject, isNonEmptyString, etc.)
+ * - isValidActaMessage: Envelope guard
+ * - validatePayloadDetailed / validatePayload: Payload validators
+ *
+ * CID Index:
+ * CID:ipc-validator-001 -> isPlainObject helper
+ * CID:ipc-validator-002 -> isNonEmptyString helper
+ * CID:ipc-validator-003 -> isStringArray helper
+ * CID:ipc-validator-004 -> isValidTrustLevel helper
+ * CID:ipc-validator-005 -> isValidActaMessage
+ * CID:ipc-validator-006 -> isValidMessageType helper
+ * CID:ipc-validator-007 -> isValidSource helper
+ * CID:ipc-validator-008 -> validatePayloadDetailed
+ * CID:ipc-validator-009 -> validatePayload
+ *
+ * Quick lookup: rg -n "CID:ipc-validator-" /home/spanexx/Shared/Projects/ACTA/packages/ipc/src/validator.ts
+ */
 
 import type { ActaMessage, ActaMessageType } from './types'
 
+// CID:ipc-validator-001 - isPlainObject helper
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+// CID:ipc-validator-002 - isNonEmptyString helper
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+// CID:ipc-validator-003 - isStringArray helper
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(v => typeof v === 'string')
 }
 
+// CID:ipc-validator-004 - isValidTrustLevel helper
 function isValidTrustLevel(value: unknown): value is 'low' | 'medium' | 'high' {
   return value === 'low' || value === 'medium' || value === 'high'
 }
@@ -23,6 +44,7 @@ const MAX_TASK_INPUT_CHARS = 20_000
 const MAX_TASK_ATTACHMENTS = 50
 const MAX_TASK_ATTACHMENT_PATH_CHARS = 500
 
+// CID:ipc-validator-005 - isValidActaMessage
 export function isValidActaMessage(msg: unknown): msg is ActaMessage {
   return (
     typeof msg === 'object' &&
@@ -35,6 +57,7 @@ export function isValidActaMessage(msg: unknown): msg is ActaMessage {
   )
 }
 
+// CID:ipc-validator-006 - isValidMessageType helper
 function isValidMessageType(type: unknown): type is ActaMessageType {
   const valid: ActaMessageType[] = [
     'task.request',
@@ -61,6 +84,7 @@ function isValidMessageType(type: unknown): type is ActaMessageType {
   return typeof type === 'string' && valid.includes(type as ActaMessageType)
 }
 
+// CID:ipc-validator-007 - isValidSource helper
 function isValidSource(source: unknown): source is 'ui' | 'agent' | 'tool' | 'system' {
   const valid = ['ui', 'agent', 'tool', 'system']
   return typeof source === 'string' && valid.includes(source)
@@ -74,6 +98,7 @@ export type PayloadValidationResult =
       message: string
     }
 
+// CID:ipc-validator-008 - validatePayloadDetailed
 export function validatePayloadDetailed(type: ActaMessageType, payload: unknown): PayloadValidationResult {
   if (type === 'task.request') {
     if (!isPlainObject(payload)) {
@@ -206,6 +231,7 @@ export function validatePayloadDetailed(type: ActaMessageType, payload: unknown)
   return { ok: true }
 }
 
+// CID:ipc-validator-009 - validatePayload
 export function validatePayload(type: ActaMessageType, payload: unknown): boolean {
   return validatePayloadDetailed(type, payload).ok
 }

@@ -1,8 +1,8 @@
-<div class="permission-modal__overlay" *ngIf="profiles.manageOpen" (click)="profiles.closeManage()">
+<div class="permission-modal__overlay" *ngIf="profiles.manageOpen" (click)="profilesActions.closeManage()">
     <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="manageProfilesTitle" (click)="$event.stopPropagation()">
         <header class="permission-modal__header">
             <div class="permission-modal__headerTitle" id="manageProfilesTitle">PROFILES</div>
-            <button type="button" class="permission-modal__close" (click)="profiles.closeManage()" [disabled]="profiles.busy" aria-label="Close">
+            <button type="button" class="permission-modal__close" (click)="profilesActions.closeManage()" [disabled]="profiles.busy" aria-label="Close">
                 ✕
             </button>
         </header>
@@ -22,7 +22,7 @@
                         <ng-container *ngIf="p.id === profiles.profileId"> (active)</ng-container>
                     </div>
                     <div class="permission-modal__value">
-                        <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.requestDelete(p.id)"
+                        <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profilesActions.requestDelete(p.id)"
                             [disabled]="profiles.busy || p.id === 'default' || p.id === profiles.profileId">
                             Delete
                         </button>
@@ -41,7 +41,7 @@
                 </div>
             </div>
             <div class="permission-modal__value">
-                <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profiles.create()"
+                <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profilesActions.create()"
                     [disabled]="profiles.busy || !profiles.newProfileName.trim()">
                     Create profile
                 </button>
@@ -49,11 +49,11 @@
         </div>
 
         <footer class="permission-modal__footer">
-            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.closeManage()" [disabled]="profiles.busy">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profilesActions.closeManage()" [disabled]="profiles.busy">
                 Close
             </button>
             <div class="permission-modal__footerSpacer"></div>
-            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.refresh()" [disabled]="profiles.busy">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profilesActions.refresh()" [disabled]="profiles.busy">
                 Refresh
             </button>
         </footer>

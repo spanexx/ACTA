@@ -1,10 +1,21 @@
-// File convert tool implementation
-// Converts files between supported formats (PDF→TXT, CSV→JSON)
-
+/*
+ * Code Map: Core File Convert Tool
+ * - Helper csvToJson(): Converts CSV strings to JSON arrays.
+ * - Tool metadata for file.convert plus execute implementation performing conversions.
+ *
+ * CID Index:
+ * CID:core-file-convert-001 -> csvToJson helper
+ * CID:core-file-convert-002 -> tool metadata
+ * CID:core-file-convert-003 -> execute
+ *
+ * Lookup: rg -n "CID:core-file-convert-" packages/tools/src/core/file-convert/index.ts
+ */
 import { ActaTool, ToolResult, ToolContext } from '@acta/core'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
+// CID:core-file-convert-001 - csvToJson Helper
+// Purpose: Converts CSV data into JSON array string.
 function csvToJson(csv: string): string {
   const lines = csv.trim().split('\n')
   if (lines.length < 2) {
@@ -28,6 +39,8 @@ function csvToJson(csv: string): string {
   return JSON.stringify(result, null, 2)
 }
 
+// CID:core-file-convert-002 - Tool Metadata
+// Purpose: Defines manifest for file conversion tool.
 export const file_convert: ActaTool = {
   meta: {
     id: 'file.convert',
@@ -48,6 +61,8 @@ export const file_convert: ActaTool = {
     supportedFormats: ['pdf', 'txt', 'csv', 'json']
   },
 
+  // CID:core-file-convert-003 - Execute
+  // Purpose: Validates inputs, performs supported conversions, writes result.
   async execute(input: { sourcePath: string; targetFormat: string }, context: ToolContext): Promise<ToolResult> {
     try {
       if (!input || typeof input.sourcePath !== 'string' || typeof input.targetFormat !== 'string') {

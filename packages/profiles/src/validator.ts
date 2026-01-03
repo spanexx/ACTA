@@ -1,6 +1,22 @@
+/*
+ * Code Map: Profile Validator
+ * - normalizeProfile(): Applies backward-compatible defaults to stored profiles.
+ * - parseProfile(): Normalizes + validates profiles before returning typed Profile.
+ *
+ * CID Index:
+ * CID:profiles-validator-001 -> normalizeProfile
+ * CID:profiles-validator-002 -> parseProfile
+ *
+ * Lookup: rg -n "CID:profiles-validator-" packages/profiles/src/validator.ts
+ */
+
 import type { Profile } from './profile'
 import { assertValidProfile } from './profile'
 
+// CID:profiles-validator-001 - Normalize Profile
+// Purpose: Normalizes legacy/missing fields before validation to maintain compatibility.
+// Uses: default value assignments; ensures llm/baseUrl/endpoint + paths exist
+// Used by: parseProfile()
 function normalizeProfile(input: unknown): unknown {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return input
 
@@ -37,6 +53,10 @@ function normalizeProfile(input: unknown): unknown {
   return obj
 }
 
+// CID:profiles-validator-002 - Parse Profile
+// Purpose: Normalizes and validates profile JSON before returning a typed Profile object.
+// Uses: normalizeProfile(), assertValidProfile()
+// Used by: ProfileStore.read(), update(), list()
 export function parseProfile(input: unknown): Profile {
   const normalized = normalizeProfile(input)
   assertValidProfile(normalized)

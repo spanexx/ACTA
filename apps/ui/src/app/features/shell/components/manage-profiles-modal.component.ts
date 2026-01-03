@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common'
 import { Component } from '@angular/core'
 import { FormsModule } from '@angular/forms'
+import { ProfilesActionsService } from '../../../state/profiles-actions.service'
 import { ProfilesStateService } from '../../../state/profiles-state.service'
 
 @Component({
@@ -11,5 +12,8 @@ import { ProfilesStateService } from '../../../state/profiles-state.service'
   styles: [':host { display: contents; }'],
 })
 export class ManageProfilesModalComponent {
-  constructor(public profiles: ProfilesStateService) {}
+  constructor(
+    public profiles: ProfilesStateService,
+    public profilesActions: ProfilesActionsService,
+  ) {}
 }

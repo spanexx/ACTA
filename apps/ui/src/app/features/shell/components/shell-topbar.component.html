@@ -11,14 +11,14 @@
     <div class="topbar__right">
         <div class="topbar__trust">
             <span class="topbar__meta">Profile:</span>
-            <select class="topbar__select" name="profile" [(ngModel)]="profiles.selection" (ngModelChange)="profiles.onSelectionChange($event)"
+            <select class="topbar__select" name="profile" [(ngModel)]="profiles.selection" (ngModelChange)="profilesActions.onSelectionChange($event)"
                 [disabled]="profiles.busy || setup.busy || trust.confirmOpen || trust.busy || setup.open || profiles.switchConfirmOpen"
                 aria-label="Profile">
                 <option *ngFor="let p of profiles.profiles; trackBy: profiles.trackByProfileId" [ngValue]="p.id">
                     {{ p.name }}
                 </option>
             </select>
-            <button type="button" class="icon-btn" (click)="profiles.openManage()" [disabled]="profiles.busy || setup.open || trust.confirmOpen">
+            <button type="button" class="icon-btn" (click)="profilesActions.openManage()" [disabled]="profiles.busy || setup.open || trust.confirmOpen">
                 Manage
             </button>
         </div>

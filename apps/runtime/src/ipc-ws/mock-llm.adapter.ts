@@ -1,5 +1,19 @@
+/*
+ * Code Map: Runtime Mock LLM Adapter
+ * - RuntimeMockLLMAdapter: Deterministic LLM stub for runtime testing
+ *
+ * CID Index:
+ * CID:mock-llm-001 -> RuntimeMockLLMAdapter class
+ *
+ * Quick lookup: rg -n "CID:mock-llm-" /home/spanexx/Shared/Projects/ACTA/apps/runtime/src/ipc-ws/mock-llm.adapter.ts
+ */
+
 import type { LLMAdapter, LLMRequest, LLMResponse } from '@acta/llm'
 
+// CID:mock-llm-001 - RuntimeMockLLMAdapter
+// Purpose: Provide deterministic plan generation for runtime tests and mocks
+// Uses: LLMAdapter interface, prompt inspection to craft fake plans
+// Used by: Runtime task execution for local development/testing
 export class RuntimeMockLLMAdapter implements LLMAdapter {
   id = 'mock-runtime'
 

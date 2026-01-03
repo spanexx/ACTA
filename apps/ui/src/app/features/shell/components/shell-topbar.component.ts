@@ -3,6 +3,7 @@ import { Component } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { DemoStateService } from '../../../state/demo-state.service'
 import { LogsStateService } from '../../../state/logs-state.service'
+import { ProfilesActionsService } from '../../../state/profiles-actions.service'
 import { ProfilesStateService } from '../../../state/profiles-state.service'
 import { RuntimeStatusService } from '../../../state/runtime-status.service'
 import { SetupStateService } from '../../../state/setup-state.service'
@@ -18,6 +19,7 @@ import { TrustStateService } from '../../../state/trust-state.service'
 export class ShellTopbarComponent {
   constructor(
     public runtime: RuntimeStatusService,
+    public profilesActions: ProfilesActionsService,
     public profiles: ProfilesStateService,
     public trust: TrustStateService,
     public setup: SetupStateService,

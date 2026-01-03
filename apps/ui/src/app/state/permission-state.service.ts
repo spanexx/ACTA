@@ -1,3 +1,22 @@
+/*
+  * Code Map: Permission Requests UI State
+  * - PermissionStateService: Owns permission modal state and submits decisions to the runtime.
+  * - Runtime intake: parses permission.request messages and opens modal.
+  * - Submission: sends decision (with optional remember) and updates tool output timeline.
+  * - UI helpers: label/icon helpers delegated to permission-state/labels.
+  *
+  * CID Index:
+  * CID:permission-state.service-001 -> PermissionStateService (state container)
+  * CID:permission-state.service-002 -> handlePermissionRequestFromRuntime
+  * CID:permission-state.service-003 -> cancel
+  * CID:permission-state.service-004 -> submit
+  * CID:permission-state.service-005 -> label/icon helpers
+  * CID:permission-state.service-006 -> openWithRequest
+  * CID:permission-state.service-007 -> attachPermissionListener
+  *
+  * Lookup: rg -n "CID:permission-state.service-" apps/ui/src/app/state/permission-state.service.ts
+  */
+
 import { Injectable, NgZone } from '@angular/core'
 import type { ActaMessage } from '@acta/ipc'
 import { RuntimeIpcService } from '../runtime-ipc.service'
@@ -5,7 +24,24 @@ import type { PermissionDecision, PermissionRequestEvent } from '../models/ui.mo
 import { ChatStateService } from './chat-state.service'
 import { SessionService } from './session.service'
 import { ToolOutputsStateService } from './tool-outputs-state.service'
+import { permissionRequestFromRuntime } from './permission-state/from-runtime'
+import {
+  cloudLabel,
+  folderScope,
+  leadIcon,
+  permissionDecisionLabel,
+  primaryEffect,
+  riskLabel,
+  secondaryEffect,
+  trustModeLabel,
+} from './permission-state/labels'
+import { sendPermissionDecision } from './permission-state/submit'
+import { attachActaApiPermissionListener } from './permission-state/listener'
 
+// CID:permission-state.service-001 - Permission State Container
+// Purpose: Holds permission modal state and coordinates permission decision submission.
+// Uses: RuntimeIpcService, SessionService, ChatStateService, ToolOutputsStateService, permission-state helpers
+// Used by: Permission modal component; RuntimeEventsService routes runtime messages here
 @Injectable({ providedIn: 'root' })
 export class PermissionStateService {
   open = false
@@ -26,38 +62,28 @@ export class PermissionStateService {
     this.attachPermissionListener()
   }
 
+  // CID:permission-state.service-002 - Runtime Permission Request Intake
+  // Purpose: Parses a runtime permission.request message and opens the modal.
+  // Uses: permissionRequestFromRuntime(), openWithRequest()
+  // Used by: RuntimeEventsService
   handlePermissionRequestFromRuntime(msg: ActaMessage): void {
-    if (msg.type !== 'permission.request') return
-
-    const now = Date.now()
-    const correlationId = typeof msg.correlationId === 'string' ? msg.correlationId : undefined
-    if (!correlationId) return
-
-    const p = msg.payload as any
-    const req: PermissionRequestEvent = {
-      id: msg.id,
-      requestId: typeof p?.id === 'string' ? p.id : msg.id,
-      correlationId,
-      replyTo: msg.id,
-      tool: String(p?.tool ?? 'tool'),
-      action: typeof p?.action === 'string' ? p.action : undefined,
-      scope: typeof p?.scope === 'string' ? p.scope : undefined,
-      input: typeof p?.input === 'string' ? p.input : undefined,
-      output: typeof p?.output === 'string' ? p.output : undefined,
-      reason: String(p?.reason ?? 'Permission required'),
-      risk: typeof p?.risk === 'string' ? p.risk : undefined,
-      risks: Array.isArray(p?.risks) ? p.risks.map((r: any) => String(r)) : undefined,
-      reversible: Boolean(p?.reversible ?? true),
-      rememberDecision: true,
-    }
-
-    this.openWithRequest(req, now)
+    const parsed = permissionRequestFromRuntime(msg)
+    if (!parsed) return
+    this.openWithRequest(parsed.req, parsed.now)
   }
 
+  // CID:permission-state.service-003 - Cancel Shortcut
+  // Purpose: Cancels the currently shown request by submitting a deny decision.
+  // Uses: submit()
+  // Used by: Permission modal cancel action
   cancel(): void {
     void this.submit('deny')
   }
 
+  // CID:permission-state.service-004 - Submit Permission Decision
+  // Purpose: Sends the user's decision to the runtime and updates local UI + tool output state.
+  // Uses: sendPermissionDecision(), ChatStateService.addSystemMessage(), ToolOutputsStateService.applyPermissionDecision()
+  // Used by: Permission modal submit actions
   async submit(decision: PermissionDecision): Promise<void> {
     if (!this.request) return
     if (this.submitting) return
@@ -67,31 +93,13 @@ export class PermissionStateService {
 
     this.submitting = true
 
-    try {
-      if (request.correlationId && request.replyTo) {
-        const decisionType = decision === 'deny' ? 'deny' : 'allow'
-        this.runtimeIpc.sendPermissionResponse(
-          {
-            requestId: request.requestId ?? request.id,
-            decision: decisionType,
-            remember,
-          },
-          {
-            profileId: this.session.profileId,
-            correlationId: request.correlationId,
-            replyTo: request.replyTo,
-          },
-        )
-      } else {
-        await window.ActaAPI?.respondToPermission({
-          requestId: request.id,
-          decision,
-          remember,
-        })
-      }
-    } catch {
-      // ignore (UI scaffold only)
-    }
+    await sendPermissionDecision({
+      runtimeIpc: this.runtimeIpc,
+      profileId: this.session.profileId,
+      request,
+      decision,
+      remember,
+    })
 
     this.submitting = false
     this.open = false
@@ -103,64 +111,46 @@ export class PermissionStateService {
     this.toolOutputs.applyPermissionDecision(request, decision, remember)
   }
 
+  // CID:permission-state.service-005 - Label/Icon Helpers
+  // Purpose: Delegates UI label/icon rendering to shared helpers.
+  // Uses: permission-state/labels exports
+  // Used by: Permission modal component template
   leadIcon(request: PermissionRequestEvent): string {
-    if (request.cloud) return '☁️'
-    if (request.tool.includes('convert')) return '📄'
-    return '🛡️'
+    return leadIcon(request)
   }
 
   cloudLabel(request: PermissionRequestEvent): string {
-    if (!request.cloud) return 'local'
-    if (!request.cloud.model) return request.cloud.provider
-    return `${request.cloud.provider} (${request.cloud.model})`
+    return cloudLabel(request)
   }
 
   riskLabel(request: PermissionRequestEvent): string {
-    const lines: string[] = []
-    if (request.risk) lines.push(request.risk)
-    if (request.risks?.length) lines.push(...request.risks)
-    return lines.join(' • ')
+    return riskLabel(request)
   }
 
   trustModeLabel(level: number): string {
-    if (level <= 0) return 'Deny (0)'
-    if (level === 1) return 'Ask every time (1)'
-    if (level === 2) return 'Ask once (2)'
-    if (level === 3) return 'Allow (3)'
-    return `Trust level ${level}`
+    return trustModeLabel(level)
   }
 
   primaryEffect(request: PermissionRequestEvent): string {
-    if (request.tool.includes('file.read')) return 'Read the specified file'
-    if (request.tool.includes('file.convert')) return 'Read the input file and write a converted output'
-    if (request.tool.includes('file.write')) return 'Write a file to your system'
-    return 'Execute the requested tool'
+    return primaryEffect(request)
   }
 
   secondaryEffect(request: PermissionRequestEvent): string {
-    if (request.cloud) {
-      return `May send content to ${this.cloudLabel(request)}`
-    }
-    return 'Process it locally'
+    return secondaryEffect(request)
   }
 
   folderScope(request: PermissionRequestEvent): string | null {
-    const basis = request.scope ?? request.input
-    if (!basis) return null
-
-    const normalized = basis.replace(/\\/g, '/')
-    const idx = normalized.lastIndexOf('/')
-    if (idx <= 0) return null
-
-    return `${normalized.slice(0, idx)}/*`
+    return folderScope(request)
   }
 
   permissionDecisionLabel(decision: PermissionDecision): string {
-    if (decision === 'deny') return 'Deny'
-    if (decision === 'allow_always') return 'Always allow'
-    return 'Allow once'
+    return permissionDecisionLabel(decision)
   }
 
+  // CID:permission-state.service-006 - Open Modal With Request
+  // Purpose: Normalizes state for a new request and records it in chat + tool output timeline.
+  // Uses: ChatStateService.addSystemMessage(), ToolOutputsStateService.trackPermissionRequest()
+  // Used by: handlePermissionRequestFromRuntime(), attachPermissionListener()
   private openWithRequest(req: PermissionRequestEvent, now: number): void {
     this.request = req
     this.decision = 'allow_once'
@@ -171,14 +161,16 @@ export class PermissionStateService {
     this.toolOutputs.trackPermissionRequest(req, now)
   }
 
+  // CID:permission-state.service-007 - Preload Permission Listener Wiring
+  // Purpose: Attaches an ActaAPI listener that can surface permission requests directly to the renderer.
+  // Uses: attachActaApiPermissionListener(), NgZone
+  // Used by: PermissionStateService constructor
   private attachPermissionListener(): void {
-    if (!window.ActaAPI) return
-    if (this.permissionUnsubscribe) return
-
-    this.permissionUnsubscribe = window.ActaAPI.onPermissionRequest(req => {
-      this.zone.run(() => {
-        this.openWithRequest(req, Date.now())
-      })
+    const next = attachActaApiPermissionListener({
+      zone: this.zone,
+      onRequest: (req, now) => this.openWithRequest(req, now),
+      existingUnsubscribe: this.permissionUnsubscribe,
     })
+    if (next) this.permissionUnsubscribe = next
   }
 }

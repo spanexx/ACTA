@@ -1,12 +1,28 @@
-// Tool loader implementation
-// Loads core tools and provides safe plugin manifest resolution
-
+/*
+ * Code Map: Tool Loader
+ * - ToolLoader class orchestrates loading core tools, plugin manifests, and plugin modules.
+ * - Helper methods for reading manifests + importing tool modules from directories.
+ *
+ * CID Index:
+ * CID:tools-loader-001 -> ToolLoader class
+ * CID:tools-loader-002 -> loadCoreTools
+ * CID:tools-loader-003 -> loadPluginManifests
+ * CID:tools-loader-004 -> loadPlugin
+ * CID:tools-loader-005 -> loadToolFromDirectory
+ * CID:tools-loader-006 -> resolveManifest
+ *
+ * Lookup: rg -n "CID:tools-loader-" packages/tools/src/loader.ts
+ */
 import { ToolRegistry } from './registry'
 import { ActaTool, ToolManifest } from '@acta/core'
 import { Logger } from '@acta/logging'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
+// CID:tools-loader-001 - ToolLoader
+// Purpose: Coordinates registry, logger, and filesystem paths for tool loading.
+// Uses: ToolRegistry, Logger, fs/path
+// Used by: tools package consumers (runtime startup)
 export class ToolLoader {
   private registry: ToolRegistry
   private logger: Logger
@@ -18,6 +34,9 @@ export class ToolLoader {
     this.coreToolsPath = coreToolsPath || path.join(__dirname, '..', 'core')
   }
 
+  // CID:tools-loader-002 - loadCoreTools
+  // Purpose: Loads all tools from the bundled core directory and registers them.
+  // Uses: fs.readdir, loadToolFromDirectory()
   async loadCoreTools(): Promise<void> {
     this.logger.info('Loading core tools', { path: this.coreToolsPath })
 
@@ -46,6 +65,9 @@ export class ToolLoader {
     }
   }
 
+  // CID:tools-loader-003 - loadPluginManifests
+  // Purpose: Resolves manifests from plugin directory for previewing available tools.
+  // Uses: fs.stat/readdir, resolveManifest()
   async loadPluginManifests(pluginPath: string): Promise<ToolManifest[]> {
     this.logger.info('Resolving plugin manifests', { path: pluginPath })
 
@@ -81,6 +103,8 @@ export class ToolLoader {
     }
   }
 
+  // CID:tools-loader-004 - loadPlugin
+  // Purpose: Loads a specific plugin tool directory and registers it.
   async loadPlugin(pluginPath: string, toolId: string): Promise<void> {
     this.logger.info('Loading plugin tool', { path: pluginPath, toolId })
 
@@ -94,6 +118,9 @@ export class ToolLoader {
     }
   }
 
+  // CID:tools-loader-005 - loadToolFromDirectory
+  // Purpose: Reads manifest + dynamic imports tool entry module; validates structure.
+  // Uses: fs.readFile, import(), manifest parsing
   private async loadToolFromDirectory(toolDir: string, expectedToolId?: string): Promise<ActaTool> {
     const manifestPath = path.join(toolDir, 'manifest.json')
     
@@ -127,6 +154,8 @@ export class ToolLoader {
     }
   }
 
+  // CID:tools-loader-006 - resolveManifest
+  // Purpose: Reads manifest.json for plugin listing; logs warning on failure.
   private async resolveManifest(toolDir: string): Promise<ToolManifest | null> {
     try {
       const manifestPath = path.join(toolDir, 'manifest.json')

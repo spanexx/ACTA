@@ -1,11 +1,26 @@
-// Sandbox execution implementation
-// Uses worker_threads for isolated tool execution with timeout and file access restrictions
-
+/*
+ * Code Map: Tool Sandbox
+ * - Sandbox types/default config for controlling execution limits.
+ * - ToolSandbox class providing execute + path guard helpers.
+ * - Factory helper for convenience creation.
+ *
+ * CID Index:
+ * CID:tools-sandbox-001 -> Sandbox types + DEFAULT_CONFIG
+ * CID:tools-sandbox-002 -> ToolSandbox class
+ * CID:tools-sandbox-003 -> execute
+ * CID:tools-sandbox-004 -> validateFilePath
+ * CID:tools-sandbox-005 -> getSafePath
+ * CID:tools-sandbox-006 -> createSandbox factory
+ *
+ * Lookup: rg -n "CID:tools-sandbox-" packages/tools/src/sandbox.ts
+ */
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads'
 import { ActaTool, ToolResult, ToolContext } from '@acta/core'
 import { Logger } from '@acta/logging'
 import * as path from 'path'
 
+// CID:tools-sandbox-001 - Sandbox Types & Defaults
+// Purpose: Shapes configuration/requests/responses and provides default limits.
 export interface SandboxConfig {
   timeoutMs: number
   allowedDirectories: string[]
@@ -32,6 +47,8 @@ const DEFAULT_CONFIG: SandboxConfig = {
   maxMemoryMB: 128
 }
 
+// CID:tools-sandbox-002 - ToolSandbox Class
+// Purpose: Encapsulates sandbox execution behavior with logger + config.
 export class ToolSandbox {
   private config: SandboxConfig
   private logger: Logger
@@ -46,6 +63,8 @@ export class ToolSandbox {
     }
   }
 
+  // CID:tools-sandbox-003 - execute
+  // Purpose: Executes a tool with timeout handling and structured logging.
   async execute(
     tool: ActaTool,
     input: any,
@@ -96,6 +115,8 @@ export class ToolSandbox {
     })
   }
 
+  // CID:tools-sandbox-004 - validateFilePath
+  // Purpose: Checks whether a path resides within allowed directories.
   validateFilePath(filePath: string): boolean {
     const resolvedPath = path.resolve(filePath)
     
@@ -109,6 +130,8 @@ export class ToolSandbox {
     return false
   }
 
+  // CID:tools-sandbox-005 - getSafePath
+  // Purpose: Resolves a requested path relative to base while preventing traversal.
   getSafePath(basePath: string, requestedPath: string): string | null {
     const resolvedBase = path.resolve(basePath)
     const resolvedRequested = path.resolve(basePath, requestedPath)
@@ -121,6 +144,8 @@ export class ToolSandbox {
   }
 }
 
+// CID:tools-sandbox-006 - createSandbox factory
+// Purpose: Convenience helper to instantiate ToolSandbox with overrides.
 export function createSandbox(config?: Partial<SandboxConfig>, logger?: Logger): ToolSandbox {
   return new ToolSandbox(config, logger)
 }

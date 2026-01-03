@@ -1,3 +1,20 @@
+/*
+  * Code Map: Demo Scenarios
+  * - DemoStateService: Provides UI-only demo flows (permission request + task-like scenario).
+  * - demoPermission(): Uses ActaAPI demo permission request and writes status + chat message.
+  * - runScenario(): Simulates a full plan + tool outputs timeline (no runtime required).
+  *
+  * CID Index:
+  * CID:demo-state.service-001 -> DemoStateService (demo orchestrator)
+  * CID:demo-state.service-002 -> enabled
+  * CID:demo-state.service-003 -> permissionDecisionLabel
+  * CID:demo-state.service-004 -> demoPermission
+  * CID:demo-state.service-005 -> runScenario
+  * CID:demo-state.service-006 -> newId
+  *
+  * Lookup: rg -n "CID:demo-state.service-" apps/ui/src/app/state/demo-state.service.ts
+  */
+
 import { Injectable, NgZone } from '@angular/core'
 import type { ChatMessage, PermissionDecision, ToolOutputEntry } from '../models/ui.models'
 import { ChatStateService } from './chat-state.service'
@@ -5,8 +22,12 @@ import { PermissionStateService } from './permission-state.service'
 import { SessionService } from './session.service'
 import { ToolOutputsStateService } from './tool-outputs-state.service'
 
-@Injectable({ providedIn: 'root' })
-export class DemoStateService {
+ // CID:demo-state.service-001 - Demo Orchestrator
+ // Purpose: Owns demo-only flows used for showcasing UI interactions without relying on the runtime.
+ // Uses: SessionService, ChatStateService, ToolOutputsStateService, PermissionStateService, window.ActaAPI
+ // Used by: Shell components (e.g. app-shell / topbar) when demo mode is enabled
+ @Injectable({ providedIn: 'root' })
+ export class DemoStateService {
   permissionBusy = false
   permissionStatus = ''
 
@@ -21,16 +42,28 @@ export class DemoStateService {
     private permission: PermissionStateService,
   ) {}
 
+  // CID:demo-state.service-002 - Demo Mode Gate
+  // Purpose: Exposes whether demo features should be shown/enabled.
+  // Uses: SessionService.demoEnabled
+  // Used by: Shell UI to conditionally render demo actions
   get enabled(): boolean {
     return this.session.demoEnabled
   }
 
+  // CID:demo-state.service-003 - Permission Decision Label
+  // Purpose: Renders a human-friendly label for a permission decision.
+  // Uses: PermissionDecision union type
+  // Used by: demoPermission() and status display
   permissionDecisionLabel(decision: PermissionDecision): string {
     if (decision === 'deny') return 'Deny'
     if (decision === 'allow_always') return 'Always allow'
     return 'Allow once'
   }
 
+  // CID:demo-state.service-004 - Demo Permission Flow
+  // Purpose: Exercises permission UI by requesting a demo permission decision from the preload API.
+  // Uses: window.ActaAPI.demoPermissionRequest(), ChatStateService.addSystemMessage()
+  // Used by: Shell UI demo action
   async demoPermission(): Promise<void> {
     if (this.permissionBusy) return
 
@@ -53,6 +86,10 @@ export class DemoStateService {
     }
   }
 
+  // CID:demo-state.service-005 - Demo Scenario Runner
+  // Purpose: Simulates a plan + tool output timeline (permission → convert → summarize) to demo UI.
+  // Uses: window.ActaAPI.demoPermissionRequest(), ChatStateService, ToolOutputsStateService, PermissionStateService, NgZone
+  // Used by: Shell UI demo action
   async runScenario(): Promise<void> {
     if (this.scenarioBusy) return
 
@@ -260,6 +297,10 @@ export class DemoStateService {
     }, 1900)
   }
 
+  // CID:demo-state.service-006 - ID Generator
+  // Purpose: Generates IDs for demo messages/steps/tool outputs.
+  // Uses: crypto.randomUUID() when available, otherwise timestamp+random fallback
+  // Used by: runScenario()
   private newId(): string {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
       return crypto.randomUUID()

@@ -1,3 +1,15 @@
+/*
+ * Code Map: WebSocket Message Utilities
+ * - decodeWsMessageData: Normalize WS data payloads into UTF-8 strings
+ * - parseIncomingActaMessage: Validate and parse incoming Acta messages
+ *
+ * CID Index:
+ * CID:ws-message-util-001 -> decodeWsMessageData
+ * CID:ws-message-util-002 -> parseIncomingActaMessage
+ *
+ * Quick lookup: rg -n "CID:ws-message-util-" /home/spanexx/Shared/Projects/ACTA/apps/runtime/src/ipc-ws/ws-message.util.ts
+ */
+
 import {
   isValidActaMessage,
   validatePayload,
@@ -6,6 +18,10 @@ import {
   type TaskErrorPayload,
 } from '@acta/ipc'
 
+// CID:ws-message-util-001 - decodeWsMessageData
+// Purpose: Convert various WS binary/text payload shapes into UTF-8 strings
+// Uses: Buffer conversion, ArrayBuffer handling
+// Used by: ws-transport for logging and parsing incoming frames
 export function decodeWsMessageData(data: unknown): string {
   if (typeof data === 'string') return data
   if (Buffer.isBuffer(data)) return data.toString('utf8')
@@ -21,6 +37,10 @@ export type ParsedIncomingMessage =
   | { ok: true; msg: ActaMessage }
   | { ok: false; error: TaskErrorPayload; context?: ActaMessage }
 
+// CID:ws-message-util-002 - parseIncomingActaMessage
+// Purpose: Parse JSON payload, validate Acta envelope and payload, return structured result
+// Uses: JSON parsing, @acta/ipc validation helpers
+// Used by: ws-transport when processing inbound messages
 export function parseIncomingActaMessage(text: string): ParsedIncomingMessage {
   if (!text.length) {
     return {

@@ -1,3 +1,24 @@
+/*
+ * Code Map: Tool Outputs State
+ * - ToolOutputsStateService: Maintains tool output timeline and related UI helpers/filters.
+ * - Handles permission request/decision tracking and task.step tool output upserts.
+ *
+ * CID Index:
+ * CID:tool-outputs-state.service-001 -> ToolOutputsStateService (state container)
+ * CID:tool-outputs-state.service-002 -> statusIcon/statusLabel
+ * CID:tool-outputs-state.service-003 -> getVisible
+ * CID:tool-outputs-state.service-004 -> clearCompleted
+ * CID:tool-outputs-state.service-005 -> exportAll
+ * CID:tool-outputs-state.service-006 -> toggleRaw
+ * CID:tool-outputs-state.service-007 -> copyJson/copyToClipboard/formatJson
+ * CID:tool-outputs-state.service-008 -> isToolRunActive
+ * CID:tool-outputs-state.service-009 -> trackPermissionRequest
+ * CID:tool-outputs-state.service-010 -> applyPermissionDecision
+ * CID:tool-outputs-state.service-011 -> handleTaskStepMessage
+ *
+ * Lookup: rg -n "CID:tool-outputs-state.service-" apps/ui/src/app/state/tool-outputs-state.service.ts
+ */
+
 import { Injectable } from '@angular/core'
 import type { ActaMessage } from '@acta/ipc'
 import type {
@@ -7,237 +28,128 @@ import type {
   ToolOutputFilter,
   ToolOutputStatus,
 } from '../models/ui.models'
+import { statusIcon, statusLabel } from './tool-outputs-state/status'
+import {
+  clearCompleted as clearCompletedList,
+  getVisible as getVisibleList,
+  isToolRunActive as isToolRunActiveList,
+  toggleRaw as toggleRawList,
+} from './tool-outputs-state/filters'
+import { copyJson, copyToClipboard, formatJson } from './tool-outputs-state/json'
+import { exportAll as exportAllOutputs } from './tool-outputs-state/export'
+import {
+  applyPermissionDecision as applyPermissionDecisionList,
+  trackPermissionRequest as trackPermissionRequestList,
+} from './tool-outputs-state/permissions'
+import { upsertFromTaskStepMessage } from './tool-outputs-state/task-step'
 
+// CID:tool-outputs-state.service-001 - Tool Outputs State Container
+// Purpose: Stores tool output entries and exposes helper methods for filtering and interaction.
+// Uses: tool-outputs-state helpers (filters/json/export/permissions/task-step/status)
+// Used by: Tool panel component; PermissionStateService; RuntimeEventsService
 @Injectable({ providedIn: 'root' })
 export class ToolOutputsStateService {
   toolOutputs: ToolOutputEntry[] = []
   toolFilter: ToolOutputFilter = 'all'
   toolSearch = ''
 
+  // CID:tool-outputs-state.service-002 - Status UI Helpers
+  // Purpose: Maps output status to icon/label strings.
+  // Uses: statusIcon(), statusLabel()
+  // Used by: Tool output list UI
   statusIcon(status: ToolOutputStatus): string {
-    switch (status) {
-      case 'waiting_permission':
-        return '🔐'
-      case 'running':
-        return '🔄'
-      case 'completed':
-        return '✅'
-      case 'error':
-        return '❌'
-    }
+    return statusIcon(status)
   }
 
   statusLabel(status: ToolOutputStatus): string {
-    switch (status) {
-      case 'waiting_permission':
-        return 'Waiting permission'
-      case 'running':
-        return 'Running'
-      case 'completed':
-        return 'Completed'
-      case 'error':
-        return 'Error'
-    }
+    return statusLabel(status)
   }
 
+  // CID:tool-outputs-state.service-003 - Visible Outputs
+  // Purpose: Returns visible tool outputs based on current filter/search.
+  // Uses: getVisibleList()
+  // Used by: Tool output list UI
   getVisible(): ToolOutputEntry[] {
-    const search = this.toolSearch.trim().toLowerCase()
-
-    return this.toolOutputs
-      .filter(out => {
-        if (this.toolFilter === 'all') return true
-        if (this.toolFilter === 'active') {
-          return out.status === 'running' || out.status === 'waiting_permission'
-        }
-        if (this.toolFilter === 'completed') return out.status === 'completed'
-        return out.status === 'error'
-      })
-      .filter(out => {
-        if (!search) return true
-
-        const haystack = [
-          out.tool,
-          out.scope,
-          out.input,
-          out.reason,
-          out.preview,
-          out.error,
-          ...(out.artifacts?.map(a => a.path) ?? []),
-        ]
-          .filter((v): v is string => typeof v === 'string')
-          .join(' ')
-          .toLowerCase()
-
-        return haystack.includes(search)
-      })
-  }
-
-  clearCompleted(): void {
-    this.toolOutputs = this.toolOutputs.filter(out => out.status !== 'completed')
-  }
-
-  exportAll(): void {
-    const json = this.formatJson(this.toolOutputs.map(({ expanded, ...rest }) => rest))
-
-    try {
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `acta-tool-outputs-${Date.now()}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      this.copyToClipboard(json)
-    }
-  }
-
-  toggleRaw(id: string): void {
-    this.toolOutputs = this.toolOutputs.map(out => {
-      if (out.id !== id) return out
-      return { ...out, expanded: !out.expanded }
+    return getVisibleList({
+      toolOutputs: this.toolOutputs,
+      toolFilter: this.toolFilter,
+      toolSearch: this.toolSearch,
     })
   }
 
+  // CID:tool-outputs-state.service-004 - Clear Completed
+  // Purpose: Removes completed entries from the timeline.
+  // Uses: clearCompletedList()
+  // Used by: Tool panel UI
+  clearCompleted(): void {
+    this.toolOutputs = clearCompletedList(this.toolOutputs)
+  }
+
+  // CID:tool-outputs-state.service-005 - Export All
+  // Purpose: Exports all outputs in a user-friendly format.
+  // Uses: exportAllOutputs(), formatJson(), copyToClipboard()
+  // Used by: Tool panel UI
+  exportAll(): void {
+    exportAllOutputs({
+      toolOutputs: this.toolOutputs,
+      formatJson: this.formatJson.bind(this),
+      copyToClipboard: this.copyToClipboard.bind(this),
+    })
+  }
+
+  // CID:tool-outputs-state.service-006 - Toggle Raw View
+  // Purpose: Toggles raw JSON view for a specific output entry.
+  // Uses: toggleRawList()
+  // Used by: Tool output list UI
+  toggleRaw(id: string): void {
+    this.toolOutputs = toggleRawList(this.toolOutputs, id)
+  }
+
+  // CID:tool-outputs-state.service-007 - JSON Copy/Format Helpers
+  // Purpose: Exposes clipboard and formatting helpers to the UI.
+  // Uses: copyJson(), copyToClipboard(), formatJson()
+  // Used by: Tool panel UI
   copyJson(value: unknown): void {
-    this.copyToClipboard(this.formatJson(value))
+    copyJson(value)
   }
 
   copyToClipboard(text: string): void {
-    void navigator.clipboard?.writeText(text)
+    copyToClipboard(text)
   }
 
   formatJson(value: unknown): string {
-    try {
-      return JSON.stringify(value, null, 2)
-    } catch {
-      return String(value)
-    }
+    return formatJson(value)
   }
 
+  // CID:tool-outputs-state.service-008 - Active Run Detection
+  // Purpose: Detects whether a tool run is currently active based on tool output statuses.
+  // Uses: isToolRunActiveList()
+  // Used by: ProfilesActionsService (switch confirmation gating)
   isToolRunActive(): boolean {
-    return this.toolOutputs.some(out => out.status === 'running' || out.status === 'waiting_permission')
+    return isToolRunActiveList(this.toolOutputs)
   }
 
+  // CID:tool-outputs-state.service-009 - Track Permission Request
+  // Purpose: Inserts a permission request entry into the tool outputs timeline.
+  // Uses: trackPermissionRequestList()
+  // Used by: PermissionStateService
   trackPermissionRequest(req: PermissionRequestEvent, now: number): void {
-    const alreadyTracked = this.toolOutputs.some(out => out.id === req.id)
-    if (alreadyTracked) return
-
-    const entry: ToolOutputEntry = {
-      id: req.id,
-      timestamp: now,
-      tool: req.tool,
-      status: 'waiting_permission',
-      scope: req.scope,
-      input: req.input,
-      reason: req.reason,
-      preview: 'Permission required to proceed.',
-      raw: req,
-      expanded: false,
-    }
-
-    this.toolOutputs = [entry, ...this.toolOutputs]
+    this.toolOutputs = trackPermissionRequestList(this.toolOutputs, req, now)
   }
 
+  // CID:tool-outputs-state.service-010 - Apply Permission Decision
+  // Purpose: Updates a tracked permission request entry with the user's decision.
+  // Uses: applyPermissionDecisionList()
+  // Used by: PermissionStateService
   applyPermissionDecision(request: PermissionRequestEvent, decision: PermissionDecision, remember: boolean): void {
-    this.toolOutputs = this.toolOutputs.map(out => {
-      if (out.id !== request.id) return out
-      if (decision === 'deny') {
-        return {
-          ...out,
-          status: 'error',
-          error: 'Permission denied',
-          preview: 'Denied by user.',
-          raw: { ...(out.raw as object), decision },
-        }
-      }
-
-      return {
-        ...out,
-        status: 'running',
-        preview: 'Permission granted. Awaiting runtime…',
-        progress: out.progress ?? 0,
-        raw: { ...(out.raw as object), decision, remember },
-      }
-    })
+    this.toolOutputs = applyPermissionDecisionList(this.toolOutputs, request, decision, remember)
   }
 
+  // CID:tool-outputs-state.service-011 - Task Step Tool Output Upsert
+  // Purpose: Upserts tool output entries from runtime task.step messages.
+  // Uses: upsertFromTaskStepMessage()
+  // Used by: RuntimeEventsService
   handleTaskStepMessage(msg: ActaMessage): void {
-    if (msg.type !== 'task.step') return
-
-    const correlationId = msg.correlationId
-    if (typeof correlationId !== 'string' || !correlationId.length) return
-
-    const now = Date.now()
-    const step = msg.payload as any
-    const stepId = String(step?.stepId ?? '')
-    const status = String(step?.status ?? '')
-    if (!stepId.length) return
-
-    const mappedStatus: 'running' | 'completed' | 'error' | null =
-      status === 'in-progress'
-        ? 'running'
-        : status === 'completed'
-          ? 'completed'
-          : status === 'failed'
-            ? 'error'
-            : status === 'start'
-              ? 'running'
-              : status === 'error'
-                ? 'error'
-                : null
-
-    if (!mappedStatus) return
-
-    const tool = String(step?.tool ?? 'tool')
-    const reason = typeof step?.intent === 'string' ? step.intent : undefined
-
-    const stepInput = step?.input
-    const input = typeof stepInput === 'string' ? stepInput : typeof stepInput?.text === 'string' ? stepInput.text : undefined
-    const scope =
-      typeof stepInput?.scope === 'string'
-        ? stepInput.scope
-        : typeof stepInput?.path === 'string'
-          ? stepInput.path
-          : typeof stepInput?.file === 'string'
-            ? stepInput.file
-            : undefined
-
-    const stepProgressRaw = step?.progress
-    const progress =
-      typeof stepProgressRaw === 'number'
-        ? Math.max(0, Math.min(100, stepProgressRaw <= 1 ? Math.round(stepProgressRaw * 100) : Math.round(stepProgressRaw)))
-        : undefined
-
-    const stepOutput = step?.output
-    const outputPreview = typeof stepOutput === 'string' ? stepOutput : typeof stepOutput?.summary === 'string' ? stepOutput.summary : undefined
-
-    const outputId = `${correlationId}:${stepId}`
-    const existing = this.toolOutputs.find(o => o.id === outputId)
-
-    const entry: ToolOutputEntry = {
-      id: outputId,
-      timestamp: now,
-      tool,
-      status: mappedStatus,
-      scope,
-      input,
-      reason,
-      progress,
-      preview:
-        mappedStatus === 'error'
-          ? String(step?.failureReason ?? step?.error ?? 'error')
-          : mappedStatus === 'completed'
-            ? outputPreview
-              ? `Completed: ${outputPreview}`
-              : 'Completed'
-            : 'Running',
-      error: step?.failureReason ?? step?.error,
-      raw: step,
-      expanded: existing?.expanded ?? false,
-      artifacts: Array.isArray(step?.artifacts) ? step.artifacts.map((p: any) => ({ path: String(p) })) : undefined,
-    }
-
-    this.toolOutputs = [...this.toolOutputs.filter(o => o.id !== outputId), entry].sort((a, b) => a.timestamp - b.timestamp)
+    this.toolOutputs = upsertFromTaskStepMessage(this.toolOutputs, msg, Date.now())
   }
 }

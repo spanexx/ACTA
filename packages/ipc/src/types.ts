@@ -1,6 +1,30 @@
-// IPC API types (Phase-1 skeleton)
-// Aligns with Vision-Skeleton IPC API CONTRACT and Shared TypeScript Schemas
+/*
+ * Code Map: IPC API Types
+ * - ActaMessage & ActaMessageType: Envelope metadata and message type union
+ * - Task/Agent/Permission/Profile payloads: Shared schemas for IPC events
+ *
+ * CID Index:
+ * CID:ipc-types-001 -> ActaMessage interface
+ * CID:ipc-types-002 -> ActaMessageType union
+ * CID:ipc-types-003 -> TaskRequest interface
+ * CID:ipc-types-004 -> TaskStopRequest interface
+ * CID:ipc-types-005 -> RuntimeTask interface
+ * CID:ipc-types-006 -> AgentPlan interface
+ * CID:ipc-types-007 -> AgentStep interface
+ * CID:ipc-types-008 -> ToolResult interface
+ * CID:ipc-types-009 -> TaskPlanPayload interface
+ * CID:ipc-types-010 -> TaskStepPayload interface
+ * CID:ipc-types-011 -> TaskResultPayload interface
+ * CID:ipc-types-012 -> TaskErrorPayload interface
+ * CID:ipc-types-013 -> PermissionRequestPayload interface
+ * CID:ipc-types-014 -> PermissionResponsePayload interface
+ * CID:ipc-types-015 -> ProfileSummary/List/Create/Delete/Switch/Get/Update payloads
+ *
+ * Quick lookup: rg -n "CID:ipc-types-" /home/spanexx/Shared/Projects/ACTA/packages/ipc/src/types.ts
+ */
 
+// CID:ipc-types-001 - ActaMessage interface
+// Purpose: Shared envelope for IPC messages
 export interface ActaMessage<T = any> {
   id: string // uuid
   type: ActaMessageType
@@ -12,6 +36,8 @@ export interface ActaMessage<T = any> {
   replyTo?: string
 }
 
+// CID:ipc-types-002 - ActaMessageType
+// Purpose: Enumerate all IPC message kinds
 export type ActaMessageType =
   | 'task.request'
   | 'task.stop'
@@ -34,6 +60,8 @@ export type ActaMessageType =
   | 'trust.prompt'
   | 'system.event'
 
+// CID:ipc-types-003 - TaskRequest
+// Purpose: Payload for initiating a task
 export interface TaskRequest {
   input: string
   context?: {
@@ -44,10 +72,14 @@ export interface TaskRequest {
   trustLevel?: 'low' | 'medium' | 'high'
 }
 
+// CID:ipc-types-004 - TaskStopRequest
+// Purpose: Payload for cancelling a task
 export interface TaskStopRequest {
   correlationId?: string
 }
 
+// CID:ipc-types-005 - RuntimeTask
+// Purpose: Internal runtime representation of task metadata
 export interface RuntimeTask {
   taskId: string
   correlationId: string
@@ -56,12 +88,16 @@ export interface RuntimeTask {
   attachments?: string[]
 }
 
+// CID:ipc-types-006 - AgentPlan
+// Purpose: Structured plan produced by planner
 export interface AgentPlan {
   goal: string
   steps: AgentStep[]
   risks?: string[]
 }
 
+// CID:ipc-types-007 - AgentStep
+// Purpose: Per-step instruction within agent plan
 export interface AgentStep {
   id: string
   tool: string
@@ -70,6 +106,8 @@ export interface AgentStep {
   requiresPermission: boolean
 }
 
+// CID:ipc-types-008 - ToolResult
+// Purpose: Tool execution output schema
 export interface ToolResult {
   success: boolean
   output?: any
@@ -78,11 +116,13 @@ export interface ToolResult {
 }
 
 // Runtime-to-UI event payloads (examples for future use)
+// CID:ipc-types-009 - TaskPlanPayload
 export interface TaskPlanPayload {
   goal: string
   steps: AgentStep[]
   risks?: string[]
 }
+// CID:ipc-types-010 - TaskStepPayload
 export interface TaskStepPayload {
   stepId: string
   stepIndex?: number
@@ -93,12 +133,14 @@ export interface TaskStepPayload {
   artifacts?: string[]
   failureReason?: string
 }
+// CID:ipc-types-011 - TaskResultPayload
 export interface TaskResultPayload {
   success: boolean
   goal?: string
   report: string
   results?: ToolResult[]
 }
+// CID:ipc-types-012 - TaskErrorPayload
 export interface TaskErrorPayload {
   taskId: string
   code: string
@@ -106,6 +148,7 @@ export interface TaskErrorPayload {
   stepId?: string
   details?: string
 }
+// CID:ipc-types-013 - PermissionRequestPayload
 export interface PermissionRequestPayload {
   id: string
   tool: string
@@ -127,12 +170,14 @@ export interface PermissionRequestPayload {
   }
 }
 
+// CID:ipc-types-014 - PermissionResponsePayload
 export interface PermissionResponsePayload {
   requestId: string
   decision: 'allow' | 'deny'
   remember?: boolean
 }
 
+// CID:ipc-types-015a - ProfileSummary
 export interface ProfileSummary {
   id: string
   name: string
@@ -191,8 +236,13 @@ export interface ProfileDoc {
     mode: 'local' | 'cloud'
     adapterId: string
     model: string
+    baseUrl?: string
     endpoint?: string
     cloudWarnBeforeSending?: boolean
+    defaults?: {
+      temperature?: number
+      maxTokens?: number
+    }
   }
 }
 
@@ -214,8 +264,13 @@ export interface ProfileUpdateRequest {
       mode?: 'local' | 'cloud'
       adapterId?: string
       model?: string
+      baseUrl?: string
       endpoint?: string
       cloudWarnBeforeSending?: boolean
+      defaults?: {
+        temperature?: number
+        maxTokens?: number
+      }
     }
   }
 }

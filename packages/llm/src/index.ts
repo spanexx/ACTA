@@ -1,6 +1,26 @@
-// LLM package baseline (Phase-1)
+/*
+ * Code Map: LLM Package
+ * - LLM_VERSION constant
+ * - LLMRequest/LLMResponse/LLMAdapter interfaces
+ * - LLMRouterOptions + LLMRouter class (register, routing)
+ *
+ * CID Index:
+ * CID:llm-001 -> LLM_VERSION constant
+ * CID:llm-002 -> LLMRequest interface
+ * CID:llm-003 -> LLMResponse interface
+ * CID:llm-004 -> LLMAdapter interface
+ * CID:llm-005 -> LLMRouterOptions interface
+ * CID:llm-006 -> LLMRouter class
+ *
+ * Quick lookup: rg -n "CID:llm-" /home/spanexx/Shared/Projects/ACTA/packages/llm/src/index.ts
+ */
+
+// CID:llm-001 - LLM_VERSION
+// Purpose: Surface LLM package version
 export const LLM_VERSION = "0.1.0"
 
+// CID:llm-002 - LLMRequest
+// Purpose: Define request payload for adapters
 export interface LLMRequest {
   prompt: string
   system?: string
@@ -13,6 +33,8 @@ export interface LLMRequest {
   }
 }
 
+// CID:llm-003 - LLMResponse
+// Purpose: Shape of LLM completion response
 export interface LLMResponse {
   text: string
   tokens?: {
@@ -24,6 +46,8 @@ export interface LLMResponse {
   raw?: unknown
 }
 
+// CID:llm-004 - LLMAdapter
+// Purpose: Adapter interface for LLM providers
 export interface LLMAdapter {
   /** Stable identifier, e.g. 'ollama', 'openai', 'anthropic' */
   id: string
@@ -35,11 +59,15 @@ export interface LLMAdapter {
   generate(request: LLMRequest, options?: { model?: string }): Promise<LLMResponse>
 }
 
+// CID:llm-005 - LLMRouterOptions
+// Purpose: Configure router defaults
 export interface LLMRouterOptions {
   /** Default adapter id when none is provided. */
   defaultAdapterId?: string
 }
 
+// CID:llm-006 - LLMRouter
+// Purpose: Manage adapters and route generation requests
 export class LLMRouter {
   private adapters = new Map<string, LLMAdapter>()
   private defaultAdapterId?: string

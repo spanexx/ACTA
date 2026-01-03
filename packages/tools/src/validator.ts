@@ -1,6 +1,17 @@
-// Tool manifest validator
-// Ensures all tools have valid manifests before registration
-
+/*
+ * Code Map: Tool Manifest Validator
+ * - ValidationResult type for manifest checks.
+ * - ToolValidator class providing validateManifest + validate helpers.
+ * - Delegates field-level validation to validator/field-validators utilities.
+ *
+ * CID Index:
+ * CID:tools-validator-001 -> ValidationResult type
+ * CID:tools-validator-002 -> ToolValidator class
+ * CID:tools-validator-003 -> validateManifest
+ * CID:tools-validator-004 -> validate
+ *
+ * Lookup: rg -n "CID:tools-validator-" packages/tools/src/validator.ts
+ */
 import { ToolManifest, RiskLevel } from '@acta/core'
 import { REQUIRED_FIELDS } from './validator/constants'
 import {
@@ -14,12 +25,18 @@ import {
   validateVersion,
 } from './validator/field-validators'
 
+// CID:tools-validator-001 - ValidationResult Type
+// Purpose: Describes outcome of manifest validation for callers.
 export interface ValidationResult {
   valid: boolean
   errors: string[]
 }
 
+// CID:tools-validator-002 - ToolValidator Class
+// Purpose: Central validator that orchestrates manifest checks.
 export class ToolValidator {
+  // CID:tools-validator-003 - validateManifest
+  // Purpose: Validates manifest and throws with aggregated errors.
   validateManifest(manifest: unknown): ToolManifest {
     const result = this.validate(manifest)
     
@@ -32,6 +49,8 @@ export class ToolValidator {
     return manifest as ToolManifest
   }
 
+  // CID:tools-validator-004 - validate
+  // Purpose: Core validation logic generating errors array.
   validate(manifest: unknown): ValidationResult {
     const errors: string[] = []
 

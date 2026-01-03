@@ -1,9 +1,32 @@
+/*
+ * Code Map: Setup Wizard State
+ * - SetupStateService: Owns setup wizard UI state (open/busy/step/config) and persists setup via runtime.
+ * - loadConfigAndMaybeOpenWizard(): Loads profile config and opens wizard if incomplete.
+ * - testOllamaEndpoint(): Calls preload API to validate endpoint + fetch models.
+ * - complete(): Persists setup patch via runtime IPC and updates session trustLevel.
+ *
+ * CID Index:
+ * CID:setup-state.service-001 -> SetupStateService (state container)
+ * CID:setup-state.service-002 -> openWizard/closeWizard
+ * CID:setup-state.service-003 -> loadConfigAndMaybeOpenWizard
+ * CID:setup-state.service-004 -> testOllamaEndpoint
+ * CID:setup-state.service-005 -> canComplete
+ * CID:setup-state.service-006 -> summary
+ * CID:setup-state.service-007 -> complete
+ *
+ * Lookup: rg -n "CID:setup-state.service-" apps/ui/src/app/state/setup-state.service.ts
+ */
+
 import { Injectable } from '@angular/core'
 import type { ProfileSetupConfig, TrustLevel } from '../models/ui.models'
 import { RuntimeIpcService } from '../runtime-ipc.service'
 import { ChatStateService } from './chat-state.service'
 import { SessionService } from './session.service'
 
+// CID:setup-state.service-001 - Setup Wizard State Container
+// Purpose: Stores setup wizard state and coordinates loading/testing/saving setup configuration.
+// Uses: RuntimeIpcService (profileGet/profileUpdate), SessionService, ChatStateService, window.ActaAPI.testOllama
+// Used by: Setup wizard modal component; AppShellService init; Profiles delete/switch flows
 @Injectable({ providedIn: 'root' })
 export class SetupStateService {
   open = false
@@ -27,6 +50,10 @@ export class SetupStateService {
     private runtimeIpc: RuntimeIpcService,
   ) {}
 
+  // CID:setup-state.service-002 - Wizard Open/Close
+  // Purpose: Toggles the setup wizard modal.
+  // Uses: this.open
+  // Used by: Setup wizard modal component
   openWizard(): void {
     this.open = true
   }
@@ -35,6 +62,10 @@ export class SetupStateService {
     this.open = false
   }
 
+  // CID:setup-state.service-003 - Load Config + Maybe Open Wizard
+  // Purpose: Loads current profile config from runtime and opens wizard if setup is incomplete.
+  // Uses: RuntimeIpcService.profileGet()
+  // Used by: AppShellService init; profile delete/switch flows
   async loadConfigAndMaybeOpenWizard(): Promise<void> {
     try {
       const res = await this.runtimeIpc.profileGet({})
@@ -61,6 +92,10 @@ export class SetupStateService {
     }
   }
 
+  // CID:setup-state.service-004 - Test Ollama Endpoint
+  // Purpose: Validates Ollama endpoint via preload API and populates available models.
+  // Uses: window.ActaAPI.testOllama()
+  // Used by: Setup wizard modal component
   async testOllamaEndpoint(): Promise<void> {
     if (this.busy) return
     const endpoint = (this.config.endpoint ?? '').trim()
@@ -97,6 +132,10 @@ export class SetupStateService {
     }
   }
 
+  // CID:setup-state.service-005 - Completion Eligibility
+  // Purpose: Checks if setup config is complete enough to be saved.
+  // Uses: this.config fields
+  // Used by: Setup wizard UI (disable/enable save)
   canComplete(): boolean {
     const provider = this.config.modelProvider
     if (!provider) return false
@@ -109,6 +148,10 @@ export class SetupStateService {
     return true
   }
 
+  // CID:setup-state.service-006 - Config Summary
+  // Purpose: Returns a human-readable summary string for the current config.
+  // Uses: this.config fields
+  // Used by: Setup wizard UI
   summary(trustModeLabel: (level: number) => string): string {
     const provider = this.config.modelProvider ?? 'unknown'
     const trust = this.config.trustLevel === undefined ? 'unset' : trustModeLabel(this.config.trustLevel)
@@ -123,6 +166,10 @@ export class SetupStateService {
     return `Provider: ${provider} • ${warn} • Trust: ${trust}`
   }
 
+  // CID:setup-state.service-007 - Persist Setup
+  // Purpose: Persists setup configuration via runtime IPC and updates local session trustLevel.
+  // Uses: RuntimeIpcService.profileUpdate(), SessionService.setTrustLevel(), ChatStateService.addSystemMessage()
+  // Used by: Setup wizard modal component
   async complete(): Promise<void> {
     if (!this.canComplete()) return
     if (this.busy) return
@@ -130,7 +177,7 @@ export class SetupStateService {
     this.busy = true
     try {
       const provider = this.config.modelProvider ?? 'ollama'
-      const mode = provider === 'openai' || provider === 'anthropic' ? 'cloud' : 'local'
+      const mode = provider === 'openai' || provider === 'anthropic' || provider === 'gemini' ? 'cloud' : 'local'
 
       const res = await this.runtimeIpc.profileUpdate({
         profileId: this.session.profileId,

@@ -1,16 +1,48 @@
+/*
+ * Code Map: Task Context Builder
+ * - ContextToolInfo type: Tool metadata definitions
+ * - ContextMemoryEntry type: Memory entry structure
+ * - BuildTaskContextV1Options: Input options for context builder
+ * - safeStringify: Serialize arbitrary values safely
+ * - clampString: Limit string lengths
+ * - buildTaskContextV1: Compose planner context string with trimming rules
+ *
+ * CID Index:
+ * CID:context-builder-001 -> ContextToolInfo type
+ * CID:context-builder-002 -> ContextMemoryEntry type
+ * CID:context-builder-003 -> BuildTaskContextV1Options type
+ * CID:context-builder-004 -> safeStringify helper
+ * CID:context-builder-005 -> clampString helper
+ * CID:context-builder-006 -> buildTaskContextV1
+ *
+ * Quick lookup: rg -n "CID:context-builder-" /home/spanexx/Shared/Projects/ACTA/packages/agent/src/context-builder.ts
+ */
+
 import type { RuntimeTask } from '@acta/ipc'
 
+// CID:context-builder-001 - ContextToolInfo type
+// Purpose: Describe tool id/description metadata used in context
+// Uses: BuildTaskContextV1 options for tool listing
+// Used by: buildTaskContextV1 input
 export type ContextToolInfo = {
   id: string
   description?: string
 }
 
+// CID:context-builder-002 - ContextMemoryEntry type
+// Purpose: Represent structured memory entries with timestamps
+// Uses: buildTaskContextV1 memory rendering
+// Used by: BuildTaskContextV1Options
 export type ContextMemoryEntry = {
   key: string
   value: any
   timestamp: number
 }
 
+// CID:context-builder-003 - BuildTaskContextV1Options type
+// Purpose: Collect all inputs for context composition (task, tools, memory, trust, limits)
+// Uses: RuntimeTask, tool/memory definitions
+// Used by: buildTaskContextV1 function
 export type BuildTaskContextV1Options = {
   task: RuntimeTask
   tools: ContextToolInfo[]
@@ -33,6 +65,10 @@ export type BuildTaskContextV1Options = {
   }
 }
 
+// CID:context-builder-004 - safeStringify helper
+// Purpose: Serialize arbitrary values for memory rendering
+// Uses: JSON stringify with fallback to String
+// Used by: renderMemory inside buildTaskContextV1
 function safeStringify(value: any): string {
   if (typeof value === 'string') return value
   try {
@@ -42,12 +78,20 @@ function safeStringify(value: any): string {
   }
 }
 
+// CID:context-builder-005 - clampString helper
+// Purpose: Limit strings to configurable max characters
+// Uses: Simple slice logic
+// Used by: safe truncation in builder
 function clampString(s: string, maxChars: number): string {
   if (maxChars <= 0) return ''
   if (s.length <= maxChars) return s
   return s.slice(0, maxChars)
 }
 
+// CID:context-builder-006 - buildTaskContextV1
+// Purpose: Compose planner context with user input, attachments, tools, memory, metadata
+// Uses: clampString, safeStringify helpers, limit trimming strategy
+// Used by: Runtime planner input builder
 export function buildTaskContextV1(opts: BuildTaskContextV1Options): string {
   const maxChars = opts.limits?.maxChars ?? 6000
   const maxMemoryEntries = opts.limits?.maxMemoryEntries ?? 10

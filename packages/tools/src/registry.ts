@@ -1,6 +1,18 @@
-// Tool registry implementation
-// Manages tool registration, execution, and audit logging
-
+/*
+ * Code Map: Tool Registry
+ * - Manages tool registration/unregistration/listing and execution/audit logging.
+ * - Validates manifests before registration and emits structured logs.
+ *
+ * CID Index:
+ * CID:tools-registry-001 -> ToolRegistry class
+ * CID:tools-registry-002 -> register
+ * CID:tools-registry-003 -> unregister
+ * CID:tools-registry-004 -> get/list/isRegistered helpers
+ * CID:tools-registry-005 -> execute
+ * CID:tools-registry-006 -> getToolCount/clear
+ *
+ * Lookup: rg -n "CID:tools-registry-" packages/tools/src/registry.ts
+ */
 import { ToolManifest, ToolResult, ToolContext, ActaTool } from '@acta/core'
 import { ToolValidator } from './validator'
 import { Logger } from '@acta/logging'
@@ -9,6 +21,10 @@ import type { AgentStep, ExecutionContext } from './registry/types'
 
 export type { AgentStep, ExecutionContext } from './registry/types'
 
+// CID:tools-registry-001 - ToolRegistry
+// Purpose: Holds registered tools + validator/logger dependencies.
+// Uses: ToolValidator, Logger
+// Used by: ToolLoader, runtime execution pipeline
 export class ToolRegistry {
   private tools = new Map<string, ActaTool>()
   private validator: ToolValidator
@@ -19,6 +35,8 @@ export class ToolRegistry {
     this.logger = logger
   }
 
+  // CID:tools-registry-002 - register
+  // Purpose: Validates manifest then stores tool, logging metadata.
   register(tool: ActaTool): void {
     try {
       this.validator.validateManifest(tool.meta)
@@ -39,6 +57,8 @@ export class ToolRegistry {
     }
   }
 
+  // CID:tools-registry-003 - unregister
+  // Purpose: Removes tool if present, logging results.
   unregister(toolId: string): boolean {
     const tool = this.tools.get(toolId)
     if (!tool) {
@@ -51,6 +71,8 @@ export class ToolRegistry {
     return true
   }
 
+  // CID:tools-registry-004 - get/list/isRegistered
+  // Purpose: Query helpers for tool metadata.
   get(toolId: string): ActaTool | undefined {
     return this.tools.get(toolId)
   }
@@ -63,6 +85,8 @@ export class ToolRegistry {
     return this.tools.has(toolId)
   }
 
+  // CID:tools-registry-005 - execute
+  // Purpose: Executes a tool step, logging/auditing success/failure.
   async execute(step: AgentStep, context: ExecutionContext): Promise<ToolResult> {
     const startTime = Date.now()
     
@@ -140,6 +164,8 @@ export class ToolRegistry {
     }
   }
 
+  // CID:tools-registry-006 - getToolCount/clear
+  // Purpose: Expose tool count + helper to clear registry (with logging).
   getToolCount(): number {
     return this.tools.size
   }

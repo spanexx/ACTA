@@ -1,19 +1,36 @@
-// Tools package baseline (Phase-1)
+/*
+ * Code Map: Tools Package Barrel
+ * - Version constant + public exports (validator, registry, loader, sandbox).
+ * - Tool domain types/interfaces used across the package.
+ * - InMemory registry + helpers for demo/default tooling.
+ *
+ * CID Index:
+ * CID:tools-index-001 -> TOOLS_VERSION
+ * CID:tools-index-002 -> package exports (validator/registry/loader/sandbox)
+ * CID:tools-index-003 -> PermissionScope/RiskLevel + manifest/context/result types
+ * CID:tools-index-004 -> ActaTool/ToolInfo/LegacyToolRegistry interfaces
+ * CID:tools-index-005 -> InMemoryToolRegistry class
+ * CID:tools-index-006 -> createToolRegistry helper
+ * CID:tools-index-007 -> createDemoExplainTool
+ * CID:tools-index-008 -> createDefaultRegistry
+ *
+ * Lookup: rg -n "CID:tools-index-" packages/tools/src/index.ts
+ */
+
+// CID:tools-index-001 - Tools Package Version
+// Purpose: Surfaces current package version for compatibility checks.
+// Used by: Consumers needing runtime version gating
 export const TOOLS_VERSION = "0.1.0"
 
-// Tool validator
+// CID:tools-index-002 - Re-export Core Modules
+// Purpose: Exposes validator/registry/loader/sandbox APIs from the package root.
 export { ToolValidator, type ValidationResult } from './validator'
-
-// Tool registry
 export { ToolRegistry, type AgentStep, type ExecutionContext } from './registry'
-
-// Tool loader
 export { ToolLoader } from './loader'
-
-// Tool sandbox
 export { ToolSandbox, createSandbox, type SandboxConfig, type SandboxRequest, type SandboxResponse } from './sandbox'
 
-// Permission scopes aligned with Phase-1 capabilities
+// CID:tools-index-003 - Permission & Manifest Types
+// Purpose: Defines permission scopes, risk levels, and tool manifest metadata.
 export type PermissionScope =
   | 'read_files'
   | 'write_files'
@@ -53,6 +70,8 @@ export interface ToolResult {
   artifacts?: string[]
 }
 
+// CID:tools-index-004 - Tool Interfaces
+// Purpose: Public interfaces representing tools and legacy registry contract.
 export interface ActaTool {
   meta: ToolManifest
   execute(input: any, ctx: ToolContext): Promise<ToolResult>
@@ -78,6 +97,8 @@ export interface LegacyToolRegistry {
   isRegistered(toolId: string): Promise<boolean>
 }
 
+// CID:tools-index-005 - InMemoryToolRegistry
+// Purpose: Simple in-memory implementation satisfying LegacyToolRegistry for demos/tests.
 class InMemoryToolRegistry implements LegacyToolRegistry {
   private tools = new Map<string, ActaTool>()
 
@@ -112,11 +133,14 @@ class InMemoryToolRegistry implements LegacyToolRegistry {
   }
 }
 
+// CID:tools-index-006 - createToolRegistry Helper
+// Purpose: Factory returning default in-memory legacy registry implementation.
 export function createToolRegistry(): LegacyToolRegistry {
   return new InMemoryToolRegistry()
 }
 
-// Demo tool stub: explain content (read-only)
+// CID:tools-index-007 - createDemoExplainTool
+// Purpose: Provides a basic demo tool implementation for testing.
 export function createDemoExplainTool(): ActaTool {
   const meta: ToolManifest = {
     id: 'explain.content',
@@ -147,6 +171,8 @@ export function createDemoExplainTool(): ActaTool {
   }
 }
 
+// CID:tools-index-008 - createDefaultRegistry
+// Purpose: Creates a registry seeded with demo explain tool (for dev/demo flows).
 export async function createDefaultRegistry(): Promise<LegacyToolRegistry> {
   const reg = createToolRegistry()
   await reg.register(createDemoExplainTool())

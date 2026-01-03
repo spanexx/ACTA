@@ -1,15 +1,29 @@
-// Code explain tool implementation
-// Reads code files and produces plain-language explanations
-
+/*
+ * Code Map: Core Code Explain Tool
+ * - Helper: generateCodeExplanation() summarises imports/classes/functions/preview.
+ * - Exports ActaTool meta & execute implementation validating safe paths + formats.
+ *
+ * CID Index:
+ * CID:core-code-explain-001 -> ExplainInput type
+ * CID:core-code-explain-002 -> generateCodeExplanation
+ * CID:core-code-explain-003 -> code_explain tool meta
+ * CID:core-code-explain-004 -> execute
+ *
+ * Lookup: rg -n "CID:core-code-explain-" packages/tools/src/core/code-explain/index.ts
+ */
 import { ActaTool, ToolResult, ToolContext } from '@acta/core'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
+// CID:core-code-explain-001 - Explain Input
+// Purpose: Defines request payload for code explain tool.
 interface ExplainInput {
   path: string
   maxLength?: number
 }
 
+// CID:core-code-explain-002 - generateCodeExplanation
+// Purpose: Builds human-readable explanation summary from code snippet.
 function generateCodeExplanation(code: string, language: string): string {
   const lines = code.split('\n')
   const lineCount = lines.length
@@ -69,6 +83,8 @@ function generateCodeExplanation(code: string, language: string): string {
   return explanation
 }
 
+// CID:core-code-explain-003 - Tool Metadata
+// Purpose: Defines manifest for code.explain tool.
 export const code_explain: ActaTool = {
   meta: {
     id: 'code.explain',
@@ -89,6 +105,8 @@ export const code_explain: ActaTool = {
     supportedFormats: ['ts', 'js', 'py', 'java', 'html', 'css', 'json', 'md']
   },
 
+  // CID:core-code-explain-004 - Execute
+  // Purpose: Validates inputs, enforces path safety, reads file, generates explanation.
   async execute(input: ExplainInput, context: ToolContext): Promise<ToolResult> {
     try {
       if (!input || typeof input.path !== 'string') {

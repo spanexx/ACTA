@@ -1,8 +1,8 @@
-<div class="permission-modal__overlay" *ngIf="profiles.deleteOpen && profiles.deleteProfileId" (click)="profiles.cancelDelete()">
+<div class="permission-modal__overlay" *ngIf="profiles.deleteOpen && profiles.deleteProfileId" (click)="profilesActions.cancelDelete()">
     <section class="permission-modal" role="dialog" aria-modal="true" aria-labelledby="deleteProfileTitle" (click)="$event.stopPropagation()">
         <header class="permission-modal__header">
             <div class="permission-modal__headerTitle" id="deleteProfileTitle">DELETE PROFILE</div>
-            <button type="button" class="permission-modal__close" (click)="profiles.cancelDelete()" [disabled]="profiles.busy" aria-label="Close">
+            <button type="button" class="permission-modal__close" (click)="profilesActions.cancelDelete()" [disabled]="profiles.busy" aria-label="Close">
                 ✕
             </button>
         </header>
@@ -26,11 +26,11 @@
         </div>
 
         <footer class="permission-modal__footer">
-            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profiles.cancelDelete()" [disabled]="profiles.busy">
+            <button type="button" class="permission-modal__btn permission-modal__btn--secondary" (click)="profilesActions.cancelDelete()" [disabled]="profiles.busy">
                 Cancel
             </button>
             <div class="permission-modal__footerSpacer"></div>
-            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profiles.confirmDelete()" [disabled]="profiles.busy">
+            <button type="button" class="permission-modal__btn permission-modal__btn--primary" (click)="profilesActions.confirmDelete()" [disabled]="profiles.busy">
                 Delete
             </button>
         </footer>

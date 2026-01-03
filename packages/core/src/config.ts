@@ -1,10 +1,28 @@
-// Core configuration provider (Phase-1 baseline)
-// Provides hierarchical loading: defaults → env → runtime args.
-// Uses simple object merging; Zod validation can be added later.
+/*
+ * Code Map: Core Configuration Provider
+ * - ActaConfig interface: Shape of merged runtime config
+ * - defaultProfileRoot: Resolve platform-specific default profile path
+ * - normalizeProfileRoot: Expand tilde and resolve path
+ * - DEFAULTS constant: Baseline config values
+ * - fromEnv: Read overrides from environment variables
+ * - loadConfig: Merge defaults/env, validate, normalize
+ *
+ * CID Index:
+ * CID:core-config-001 -> ActaConfig interface
+ * CID:core-config-002 -> defaultProfileRoot function
+ * CID:core-config-003 -> normalizeProfileRoot function
+ * CID:core-config-004 -> DEFAULTS constant
+ * CID:core-config-005 -> fromEnv function
+ * CID:core-config-006 -> loadConfig function
+ *
+ * Quick lookup: rg -n "CID:core-config-" /home/spanexx/Shared/Projects/ACTA/packages/core/src/config.ts
+ */
 
- import os from 'node:os'
- import path from 'node:path'
+import os from 'node:os'
+import path from 'node:path'
 
+// CID:core-config-001 - ActaConfig interface
+// Purpose: Define runtime configuration contract exposed by loadConfig
 export interface ActaConfig {
   port: number
   logLevel: 'debug' | 'info' | 'warn' | 'error'
@@ -16,7 +34,9 @@ export interface ActaConfig {
   ipcPath: string
 }
 
- function defaultProfileRoot(): string {
+// CID:core-config-002 - defaultProfileRoot
+// Purpose: Derive platform-specific default profile directory
+function defaultProfileRoot(): string {
   const home = os.homedir()
 
   if (process.platform === 'win32') {
@@ -32,7 +52,9 @@ export interface ActaConfig {
   return path.join(xdgDataHome, 'acta', 'profiles')
  }
 
- function normalizeProfileRoot(input: string): string {
+// CID:core-config-003 - normalizeProfileRoot
+// Purpose: Resolve profile root path, expanding tilde when necessary
+function normalizeProfileRoot(input: string): string {
   const trimmed = input.trim()
   if (trimmed.startsWith('~/') || trimmed.startsWith('~\\')) {
     return path.resolve(os.homedir(), trimmed.slice(2))
@@ -40,6 +62,8 @@ export interface ActaConfig {
   return path.resolve(trimmed)
  }
 
+// CID:core-config-004 - DEFAULTS
+// Purpose: Baseline configuration before env overrides
 const DEFAULTS: Partial<ActaConfig> = {
   port: 5000,
   logLevel: 'info',
@@ -50,6 +74,8 @@ const DEFAULTS: Partial<ActaConfig> = {
   ipcPath: '/ws',
 }
 
+// CID:core-config-005 - fromEnv
+// Purpose: Collect environment overrides for config
 function fromEnv(): Partial<ActaConfig> {
   const cfg: Partial<ActaConfig> = {}
   if (process.env.PORT) cfg.port = Number(process.env.PORT)
@@ -63,6 +89,8 @@ function fromEnv(): Partial<ActaConfig> {
   return cfg
 }
 
+// CID:core-config-006 - loadConfig
+// Purpose: Merge defaults/env vars and validate configuration
 export function loadConfig(): ActaConfig {
   const merged = { ...DEFAULTS, ...fromEnv() }
   // Basic validation; replace with Zod later if desired

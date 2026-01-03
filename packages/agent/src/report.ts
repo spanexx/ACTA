@@ -1,5 +1,21 @@
+/*
+ * Code Map: Report Utilities
+ * - collectArtifacts: Gather artifact strings from tool results
+ * - buildDeterministicTaskReport: Produce deterministic plan execution summary
+ *
+ * CID Index:
+ * CID:report-001 -> collectArtifacts
+ * CID:report-002 -> buildDeterministicTaskReport
+ *
+ * Quick lookup: rg -n "CID:report-" /home/spanexx/Shared/Projects/ACTA/packages/agent/src/report.ts
+ */
+
 import type { AgentPlan, ToolResult } from '@acta/ipc'
 
+// CID:report-001 - collectArtifacts
+// Purpose: Aggregate artifact strings from tool results
+// Uses: Iteration over ToolResult artifacts
+// Used by: buildDeterministicTaskReport for final artifact list
 export function collectArtifacts(results: ToolResult[]): string[] {
   const out: string[] = []
   for (const r of results) {
@@ -11,6 +27,10 @@ export function collectArtifacts(results: ToolResult[]): string[] {
   return out
 }
 
+// CID:report-002 - buildDeterministicTaskReport
+// Purpose: Generate deterministic task report summarizing steps/results/artifacts
+// Uses: collectArtifacts helper, plan/results data
+// Used by: ExecutionOrchestrator, transcript persistence
 export function buildDeterministicTaskReport(opts: {
   goal?: string
   plan: AgentPlan

@@ -1,10 +1,28 @@
-// Memory package baseline (Phase-1)
+/*
+ * Code Map: Memory Package
+ * - MEMORY_VERSION constant
+ * - MemoryEntry/MemoryStore interfaces
+ * - FileMemoryStore & InMemoryMemoryStore implementations
+ * - createMemoryStore factory
+ *
+ * CID Index:
+ * CID:memory-001 -> MEMORY_VERSION constant
+ * CID:memory-002 -> MemoryEntry interface
+ * CID:memory-003 -> MemoryStore interface
+ * CID:memory-004 -> FileMemoryStore class
+ * CID:memory-005 -> InMemoryMemoryStore class
+ * CID:memory-006 -> createMemoryStore factory
+ *
+ * Quick lookup: rg -n "CID:memory-" /home/spanexx/Shared/Projects/ACTA/packages/memory/src/index.ts
+ */
+
 export const MEMORY_VERSION = "0.1.0"
 
 import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+// CID:memory-002 - MemoryEntry interface
 export interface MemoryEntry<T = any> {
   key: string
   value: T
@@ -12,6 +30,7 @@ export interface MemoryEntry<T = any> {
   expiresAt?: number
 }
 
+// CID:memory-003 - MemoryStore interface
 export interface MemoryStore {
   add<T = any>(key: string, value: T, ttlSeconds?: number): Promise<void>
   get<T = any>(key: string): Promise<T | undefined>
@@ -24,6 +43,7 @@ type PersistedState = {
   entries: Record<string, MemoryEntry>
 }
 
+// CID:memory-004 - FileMemoryStore
 class FileMemoryStore implements MemoryStore {
   constructor(private readonly dir: string) {}
 
@@ -128,6 +148,7 @@ class FileMemoryStore implements MemoryStore {
   }
 }
 
+// CID:memory-005 - InMemoryMemoryStore
 class InMemoryMemoryStore implements MemoryStore {
   private store = new Map<string, MemoryEntry>()
 
@@ -170,6 +191,7 @@ class InMemoryMemoryStore implements MemoryStore {
   }
 }
 
+// CID:memory-006 - createMemoryStore factory
 export function createMemoryStore(): MemoryStore
 export function createMemoryStore(opts?: { dir?: string }): MemoryStore
 export function createMemoryStore(opts?: { dir?: string }): MemoryStore {
